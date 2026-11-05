@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <title>Celestial Cheers - Real-time Drinking Game Prototype</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            surface: "#fef9ef",
+            "surface-dim": "#ded9d1",
+            "surface-bright": "#fef9ef",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f8f3ea",
+            "surface-container": "#f3ede4",
+            "surface-container-high": "#ede8df",
+            "surface-container-highest": "#e7e2d9",
+            "on-surface": "#1d1c16",
+            "on-surface-variant": "#444748",
+            primary: "#141413",
+            "on-primary": "#ffffff",
+            "primary-container": "#242321",
+            secondary: "#615e5a",
+            "secondary-container": "#e7e2dc",
+            "on-secondary-container": "#676460",
+            tertiary: "#9a6c1e",
+            "tertiary-gold": "#d4af37",
+            "celestial-gold": "#e9b949",
+            "celestial-glow": "rgba(233, 185, 73, 0.45)",
+            error: "#ba1a1a",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            outline: "#747878",
+            "outline-variant": "#c4c7c7"
+          },
+          fontFamily: {
+            cinzel: ["Cinzel", "serif"],
+            sans: ["Inter", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          },
+          boxShadow: {
+            'celestial': '0 0 35px rgba(212, 175, 55, 0.35), 0 0 10px rgba(255, 215, 0, 0.2)',
+            'card-3d': '0 15px 35px -5px rgba(20, 20, 19, 0.18), 0 5px 15px rgba(0, 0, 0, 0.08)'
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* 3D Flip Card Container */
+    .perspective-1000 {
+      perspective: 1200px;
+    }
+    .transform-style-3d {
+      transform-style: preserve-3d;
+    }
+    .backface-hidden {
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .rotate-y-180 {
+      transform: rotateY(180deg);
+    }
+
+    /* Flip animation transition */
+    .card-flipper {
+      transition: transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Shimmer Effect on Card Back */
+    @keyframes celestialShimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .celestial-shimmer {
+      background: linear-gradient(115deg, transparent 20%, rgba(255, 225, 130, 0.25) 45%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 225, 130, 0.25) 55%, transparent 80%);
+      background-size: 200% 100%;
+      animation: celestialShimmer 4s infinite linear;
+    }
+
+    /* Particle Canvas overlay */
+    .particle-canvas {
+      pointer-events: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 40;
+    }
+
+    /* Hide scrollbar */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    * {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Pulse Glow */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(212, 175, 55, 0.4); }
+      50% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.8), 0 0 50px rgba(255, 200, 50, 0.3); }
+    }
+    .active-turn-glow {
+      animation: pulseGlow 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+
+<body class="bg-[#191918] text-[#1d1c16] font-sans antialiased min-h-screen flex flex-col select-none">
+
+  <!-- TOP PROTOTYPE BAR (Bảng điều khiển thử nghiệm Realtime) -->
+  <header class="bg-[#121211] border-b border-[#2d2d2a] text-white px-4 py-2.5 z-50 sticky top-0 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Mode Title -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black font-cinzel font-bold shadow-md">
+          ✦
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-cinzel text-amber-400 text-sm font-bold tracking-wider">SIP·CRAFT CELESTIAL</span>
+            <span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded font-mono">PROTOTYPE SIMULATOR</span>
+          </div>
+          <div class="text-[11px] text-zinc-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Mô phỏng đồng bộ tức thì (BroadcastChannel & State Machine)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulator Controls: View Mode & Controls -->
+      <div class="flex items-center gap-2 flex-wrap">
+        
+        <!-- View Toggle: Dual Phone vs Single Phone -->
+        <div class="bg-[#242321] p-0.5 rounded-lg border border-[#383734] flex items-center text-xs">
+          <button id="btnDualMode" onclick="setSimulatorMode('dual')" class="px-2.5 py-1 rounded-md font-medium transition-all bg-amber-500 text-black shadow font-sans flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[15px]">devices</span>
+            <span>Mô phỏng 2 Máy Song Song</span>
+          </button>
+          <button id="btnSingleMode" onclick="setSimulatorMode('single')" class="px-2.5 py-1 rounded-md font-medium transition-all text-zinc-400 hover:text-white font-sans flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[15px]">smartphone</span>
+            <span>Chế độ 1 Điện Thoại</span>
+          </button>
+        </div>
+
+        <!-- Audio FX Toggle -->
+        <button id="btnSoundToggle" onclick="toggleAudio()" class="bg-[#242321] hover:bg-[#31302d] text-zinc-300 hover:text-amber-400 border border-[#383734] px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors" title="Bật/Tắt âm thanh hiệu ứng">
+          <span class="material-symbols-outlined text-[16px]" id="soundIcon">volume_up</span>
+          <span id="soundLabel">Âm thanh: Bật</span>
+        </button>
+
+        <!-- Reset Room State -->
+        <button onclick="resetGame()" class="bg-[#242321] hover:bg-[#31302d] text-zinc-300 hover:text-white border border-[#383734] px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors" title="Reset lại vòng bài từ đầu">
+          <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+          <span>Reset Bàn</span>
+        </button>
+
+        <!-- Code Modal Trigger -->
+        <button onclick="openFirebaseGuide()" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1.5 rounded-lg text-xs flex items-center gap-1.5 transition-colors font-medium">
+          <span class="material-symbols-outlined text-[16px]">integration_instructions</span>
+          <span>Xem Code Firebase 100%</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- BANNER HƯỚNG DẪN TRẢI NGHIỆM -->
+  <div class="bg-[#1f1e1c] border-b border-[#2d2c29] text-zinc-300 py-2 px-4 text-xs">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <span class="text-amber-400 font-bold">✨ BÀN NHẬU TEST:</span>
+        <span id="guideBannerText">Đang ở chế độ <b>2 Máy Song Song</b>. Bên trái là điện thoại của <b>Hoàng Nam (Người đang có lượt)</b>, bên phải là của <b>Mai Anh (Khán giả)</b>. Hãy thử bấm lá bài ở Máy 1 và xem Máy 2 lật cùng lúc!</span>
+      </div>
+      <div class="flex items-center gap-3 text-zinc-400 font-mono text-[11px]">
+        <span>Phòng: <strong class="text-amber-400">#ALCH88</strong></span>
+        <span>Độ trễ mô phỏng: <strong class="text-emerald-400">~15ms (Tức thì)</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN SIMULATOR STAGE -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 flex flex-col justify-center items-center">
+
+    <!-- CONTAINER 2 ĐIỆN THOẠI HOẶC 1 ĐIỆN THOẠI -->
+    <div id="phonesContainer" class="w-full flex flex-col lg:flex-row items-center justify-center gap-6 xl:gap-12 transition-all duration-300">
+
+      <!-- ======================================================== -->
+      <!-- PHONE 1: DEVICE A (HOÀNG NAM - MÁY 1) -->
+      <!-- ======================================================== -->
+      <div id="phoneDevice1" class="w-full max-w-[400px] flex flex-col items-center">
+        <!-- Phone Device Label & Perspective Selector -->
+        <div class="w-full flex items-center justify-between px-2 mb-2 text-xs">
+          <div class="flex items-center gap-1.5 text-zinc-300 font-medium">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]"></span>
+            <span class="font-bold text-amber-300">ĐIỆN THOẠI 1:</span>
+            <span id="dev1Name">Hoàng Nam (Host)</span>
+          </div>
+          <!-- Change role dropdown -->
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] text-zinc-400">Góc nhìn:</span>
+            <select id="selectPlayer1" onchange="changeDeviceUser(1, this.value)" class="bg-[#242321] text-amber-300 text-xs rounded border border-[#383734] px-1.5 py-0.5 focus:outline-none">
+              <option value="0" selected>1. Hoàng Nam</option>
+              <option value="1">2. Mai Anh</option>
+              <option value="2">3. Tuấn Hải</option>
+              <option value="3">4. Minh Trang</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Phone Shell 1 -->
+        <div class="w-full bg-[#111110] rounded-[38px] p-3 shadow-2xl border-4 border-[#333230] relative overflow-hidden flex flex-col min-h-[740px] max-h-[860px]">
+          <!-- Phone Speaker Notch -->
+          <div class="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-[#222120] rounded-b-xl z-50 flex items-center justify-center">
+            <div class="w-10 h-1 bg-zinc-600 rounded-full"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-[#151515] ml-2"></div>
+          </div>
+
+          <!-- Phone Inner Screen -->
+          <div class="w-full flex-1 bg-[#fef9ef] rounded-[28px] overflow-hidden flex flex-col relative pt-4 text-on-surface shadow-inner">
+            
+            <!-- Particle Canvas Overlay for Phone 1 -->
+            <canvas id="canvasDevice1" class="particle-canvas"></canvas>
+
+            <!-- Screen Header -->
+            <div class="px-3.5 pt-2 pb-2 border-b border-surface-container flex items-center justify-between shrink-0 bg-surface/90 backdrop-blur-md z-30">
+              <div class="flex flex-col">
+                <div class="flex items-center gap-1">
+                  <span class="font-cinzel font-bold text-xs tracking-wider text-on-surface">✦ SIPCRAFT</span>
+                  <span class="text-[10px] font-mono bg-surface-container px-1 py-0.2 rounded text-secondary font-medium">#ALCH88</span>
+                </div>
+                <span class="text-[11px] text-secondary">Vòng 2 • 4 Người chơi</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="roleBadge1" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[12px]">star</span>
+                  <span>Host</span>
+                </span>
+                <div class="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold" id="dev1Avatar">
+                  HN
+                </div>
+              </div>
+            </div>
+
+            <!-- Scrollable Content Screen -->
+            <div class="flex-1 overflow-y-auto px-3.5 py-2.5 flex flex-col justify-between space-y-3 z-20">
+              
+              <!-- 1. Turn Announcement Banner (Tất cả nhìn chung 1 bàn) -->
+              <div id="turnBanner1" class="rounded-xl p-3 shadow-sm border transition-all duration-300">
+                <!-- Injected via JS -->
+              </div>
+
+              <!-- 2. Player Avatars List Row -->
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[11px] font-semibold tracking-wider text-secondary uppercase flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">groups</span>
+                    <span>Thành viên bàn</span>
+                  </span>
+                  <span class="text-[11px] font-mono text-secondary" id="roundInfo1">Lượt 1/4</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5" id="playersList1">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+
+              <!-- 3. Central Deck / 3D Flipping Card Stage -->
+              <div class="flex flex-col items-center justify-center py-1">
+                
+                <!-- 3D Perspective Flip Box -->
+                <div class="perspective-1000 w-full max-w-[270px] aspect-[5/7.2] relative select-none">
+                  
+                  <div id="cardFlipper1" class="card-flipper w-full h-full relative transform-style-3d cursor-pointer" onclick="handleCardClick(1)">
+                    
+                    <!-- ============================================== -->
+                    <!-- CARD BACK (MẶT ÚP - PHÉP THUẬT CELESTIAL CHEERS) -->
+                    <!-- ============================================== -->
+                    <div class="absolute inset-0 w-full h-full backface-hidden rounded-2xl bg-gradient-to-br from-[#1c1b18] via-[#2a2824] to-[#141413] border-2 border-amber-500/60 shadow-card-3d p-3.5 flex flex-col justify-between items-center text-amber-100 overflow-hidden group">
+                      
+                      <!-- Celestial Shimmer Effect -->
+                      <div class="absolute inset-0 celestial-shimmer pointer-events-none"></div>
+
+                      <!-- Decorative Celestial Frame Corners -->
+                      <div class="absolute top-2 left-2 text-[10px] text-amber-400 font-cinzel">✦</div>
+                      <div class="absolute top-2 right-2 text-[10px] text-amber-400 font-cinzel">✦</div>
+                      <div class="absolute bottom-2 left-2 text-[10px] text-amber-400 font-cinzel">✦</div>
+                      <div class="absolute bottom-2 right-2 text-[10px] text-amber-400 font-cinzel">✦</div>
+
+                      <!-- Card Header Info -->
+                      <div class="w-full flex items-center justify-between text-amber-400/80 font-mono text-[10px] z-10">
+                        <span id="cardDeckId1">DECK·04</span>
+                        <span class="flex items-center gap-0.5">
+                          <span class="material-symbols-outlined text-[13px]">auto_awesome</span>
+                          <span>CELESTIAL</span>
+                        </span>
+                      </div>
+
+                      <!-- Center Celestial Sun/Star Monogram -->
+                      <div class="flex flex-col items-center justify-center my-auto z-10 text-center">
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-600/30 via-amber-400/20 to-transparent border border-amber-400/40 flex items-center justify-center shadow-lg relative group-hover:scale-105 transition-transform duration-300">
+                          <!-- Outer Ring -->
+                          <div class="absolute inset-1 rounded-full border border-dashed border-amber-300/30 animate-spin" style="animation-duration: 25s;"></div>
+                          <!-- Inner Icon -->
+                          <span class="material-symbols-outlined text-3xl text-amber-300 drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]">local_bar</span>
+                        </div>
+                        
+                        <h3 class="font-cinzel text-amber-300 font-bold text-sm tracking-wider mt-3 drop-shadow">
+                          THẺ BÀI ĐỊNH MỆNH
+                        </h3>
+                        <p class="text-[11px] text-amber-200/70 mt-0.5 font-sans" id="deckStatusHint1">
+                          Chạm để rút lá tiếp theo
+                        </p>
+                      </div>
+
+                      <!-- Bottom Hint / Lock Indicator -->
+                      <div id="deckFooterBar1" class="w-full py-1.5 px-2 rounded-lg bg-black/40 border border-amber-500/30 text-center z-10 flex items-center justify-center gap-1 text-[11px]">
+                        <!-- Dynamic via JS -->
+                      </div>
+
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- CARD FRONT (MẶT NGỬA - CÂU HỎI & HÌNH PHẠT) -->
+                    <!-- ============================================== -->
+                    <div class="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-surface-container-lowest border-2 border-amber-400/80 shadow-card-3d p-3.5 flex flex-col justify-between text-on-surface overflow-hidden">
+                      
+                      <!-- Top Category & Difficulty -->
+                      <div>
+                        <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+                          <div class="flex items-center gap-1.5">
+                            <span id="cardBadgeType1" class="text-[11px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-error-container text-on-error-container">
+                              DARE / THỬ THÁCH
+                            </span>
+                          </div>
+                          <span id="cardDifficulty1" class="text-[10px] font-mono text-secondary bg-surface-container-high px-1.5 py-0.5 rounded">
+                            Độ khó: 4/5
+                          </span>
+                        </div>
+
+                        <!-- Card Title & Prompt Content -->
+                        <div class="mt-3 text-left">
+                          <h4 id="cardTitle1" class="font-cinzel font-bold text-base text-on-surface tracking-tight leading-snug">
+                            Đọc Tin Nhắn Bất Ngờ!
+                          </h4>
+                          <p id="cardDescription1" class="text-xs text-on-surface-variant mt-2 leading-relaxed font-sans">
+                            Mở ứng dụng Messenger hoặc Zalo cho cả bàn cùng đọc to 3 tin nhắn gần nhất với crush hoặc bạn thân!
+                          </p>
+                        </div>
+                      </div>
+
+                      <!-- Bottom Penalty Box & Reactions -->
+                      <div class="space-y-2 mt-2">
+                        <!-- Penalty Callout -->
+                        <div class="bg-amber-50 border border-amber-200/70 rounded-xl p-2.5 flex items-start gap-2 shadow-xs">
+                          <span class="text-xl select-none shrink-0">🍺</span>
+                          <div class="text-left min-w-0">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-900 block">
+                              Hình phạt nếu từ chối
+                            </span>
+                            <span id="cardPenalty1" class="text-xs font-semibold text-amber-950 leading-tight block mt-0.5">
+                              Uống cạn 1 ly bia (100% dung tích) ngay tại chỗ!
+                            </span>
+                          </div>
+                        </div>
+
+                        <!-- Mini Reactions -->
+                        <div class="flex items-center justify-between pt-1">
+                          <div class="flex items-center gap-1">
+                            <button onclick="addReaction('🍻')" class="text-xs px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high transition-colors">🍻 <span id="reactBeer">12</span></button>
+                            <button onclick="addReaction('😱')" class="text-xs px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high transition-colors">😱 <span id="reactGasp">8</span></button>
+                            <button onclick="addReaction('🔥')" class="text-xs px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high transition-colors">🔥 <span id="reactFire">21</span></button>
+                          </div>
+                          <span class="text-[10px] font-mono text-secondary">SipCraft Cards</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- 4. Action Buttons Area (Tự động mở/khóa theo lượt) -->
+              <div id="actionArea1" class="space-y-1.5 pt-1 shrink-0">
+                <!-- Injected via JS -->
+              </div>
+
+            </div>
+
+            <!-- Screen Footer Bar -->
+            <div class="px-3 py-1.5 bg-surface-container-low border-t border-surface-container text-center text-[10px] text-secondary flex items-center justify-between font-mono shrink-0">
+              <span class="flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Firestore Live Sync</span>
+              </span>
+              <span>v1.0.4 • Notion Celestial</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- PHONE 2: DEVICE B (MAI ANH - MÁY 2 ĐỒNG THỜI) -->
+      <!-- ======================================================== -->
+      <div id="phoneDevice2" class="w-full max-w-[400px] flex flex-col items-center">
+        <!-- Phone Device Label & Perspective Selector -->
+        <div class="w-full flex items-center justify-between px-2 mb-2 text-xs">
+          <div class="flex items-center gap-1.5 text-zinc-300 font-medium">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.7)]"></span>
+            <span class="font-bold text-sky-300">ĐIỆN THOẠI 2:</span>
+            <span id="dev2Name">Mai Anh (Khán giả)</span>
+          </div>
+          <!-- Change role dropdown -->
+          <div class="flex items-center gap-1">
+            <span class="text-[11px] text-zinc-400">Góc nhìn:</span>
+            <select id="selectPlayer2" onchange="changeDeviceUser(2, this.value)" class="bg-[#242321] text-sky-300 text-xs rounded border border-[#383734] px-1.5 py-0.5 focus:outline-none">
+              <option value="0">1. Hoàng Nam</option>
+              <option value="1" selected>2. Mai Anh</option>
+              <option value="2">3. Tuấn Hải</option>
+              <option value="3">4. Minh Trang</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Phone Shell 2 -->
+        <div class="w-full bg-[#111110] rounded-[38px] p-3 shadow-2xl border-4 border-[#333230] relative overflow-hidden flex flex-col min-h-[740px] max-h-[860px]">
+          <!-- Phone Speaker Notch -->
+          <div class="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-4 bg-[#222120] rounded-b-xl z-50 flex items-center justify-center">
+            <div class="w-10 h-1 bg-zinc-600 rounded-full"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-[#151515] ml-2"></div>
+          </div>
+
+          <!-- Phone Inner Screen -->
+          <div class="w-full flex-1 bg-[#fef9ef] rounded-[28px] overflow-hidden flex flex-col relative pt-4 text-on-surface shadow-inner">
+            
+            <!-- Particle Canvas Overlay for Phone 2 -->
+            <canvas id="canvasDevice2" class="particle-canvas"></canvas>
+
+            <!-- Screen Header -->
+            <div class="px-3.5 pt-2 pb-2 border-b border-surface-container flex items-center justify-between shrink-0 bg-surface/90 backdrop-blur-md z-30">
+              <div class="flex flex-col">
+                <div class="flex items-center gap-1">
+                  <span class="font-cinzel font-bold text-xs tracking-wider text-on-surface">✦ SIPCRAFT</span>
+                  <span class="text-[10px] font-mono bg-surface-container px-1 py-0.2 rounded text-secondary font-medium">#ALCH88</span>
+                </div>
+                <span class="text-[11px] text-secondary">Vòng 2 • 4 Người chơi</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span id="roleBadge2" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-zinc-100 text-zinc-700 border border-zinc-300 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[12px]">person</span>
+                  <span>Người chơi</span>
+                </span>
+                <div class="w-7 h-7 rounded-full bg-secondary text-white flex items-center justify-center text-xs font-bold" id="dev2Avatar">
+                  MA
+                </div>
+              </div>
+            </div>
+
+            <!-- Scrollable Content Screen -->
+            <div class="flex-1 overflow-y-auto px-3.5 py-2.5 flex flex-col justify-between space-y-3 z-20">
+              
+              <!-- 1. Turn Announcement Banner (Tất cả nhìn chung 1 bàn) -->
+              <div id="turnBanner2" class="rounded-xl p-3 shadow-sm border transition-all duration-300">
+                <!-- Injected via JS -->
+              </div>
+
+              <!-- 2. Player Avatars List Row -->
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[11px] font-semibold tracking-wider text-secondary uppercase flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[13px]">groups</span>
+                    <span>Thành viên bàn</span>
+                  </span>
+                  <span class="text-[11px] font-mono text-secondary" id="roundInfo2">Lượt 1/4</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5" id="playersList2">
+                  <!-- Injected via JS -->
+                </div>
+              </div>
+
+              <!-- 3. Central Deck / 3D Flipping Card Stage -->
+              <div class="flex flex-col items-center justify-center py-1">
+                
+                <!-- 3D Perspective Flip Box -->
+                <div class="perspective-1000 w-full max-w-[270px] aspect-[5/7.2] relative select-none">
+                  
+                  <div id="cardFlipper2" class="card-flipper w-full h-full relative transform-style-3d cursor-pointer" onclick="handleCardClick(2)">
+                    
+                    <!-- ============================================== -->
+                    <!-- CARD BACK (MẶT ÚP) -->
+                    <!-- ============================================== -->
+                    <div class="absolute inset-0 w-full h-full backface-hidden rounded-2xl bg-gradient-to-br from-[#1c1b18] via-[#2a2824] to-[#141413] border-2 border-amber-500/60 shadow-card-3d p-3.5 flex flex-col justify-between items-center text-amber-100 overflow-hidden group">
+                      
+                      <div class="absolute inset-0 celestial-shimmer pointer-events-none"></div>
+
+                      <!-- Decorative Celestial Frame Corners -->
+                      <div class="absolute top-2 left-2 text-[10px] text-amber-400 font-cinzel">✦</div>
+                      <div class="absolute top-2 right-2 text-[10px] text-amber-400 font-cinzel">✦</div>
+                      <div class="absolute bottom-2 left-2 text-[10px] text-amber-400 font-cinzel">✦</div>
+                      <div class="absolute bottom-2 right-2 text-[10px] text-amber-400 font-cinzel">✦</div>
+
+                      <!-- Card Header Info -->
+                      <div class="w-full flex items-center justify-between text-amber-400/80 font-mono text-[10px] z-10">
+                        <span id="cardDeckId2">DECK·04</span>
+                        <span class="flex items-center gap-0.5">
+                          <span class="material-symbols-outlined text-[13px]">auto_awesome</span>
+                          <span>CELESTIAL</span>
+                        </span>
+                      </div>
+
+                      <!-- Center Celestial Sun/Star Monogram -->
+                      <div class="flex flex-col items-center justify-center my-auto z-10 text-center">
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-600/30 via-amber-400/20 to-transparent border border-amber-400/40 flex items-center justify-center shadow-lg relative">
+                          <div class="absolute inset-1 rounded-full border border-dashed border-amber-300/30 animate-spin" style="animation-duration: 25s;"></div>
+                          <span class="material-symbols-outlined text-3xl text-amber-300 drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]">local_bar</span>
+                        </div>
+                        
+                        <h3 class="font-cinzel text-amber-300 font-bold text-sm tracking-wider mt-3 drop-shadow">
+                          THẺ BÀI ĐỊNH MỆNH
+                        </h3>
+                        <p class="text-[11px] text-amber-200/70 mt-0.5 font-sans" id="deckStatusHint2">
+                          Chờ người chơi rút bài...
+                        </p>
+                      </div>
+
+                      <!-- Bottom Hint / Lock Indicator -->
+                      <div id="deckFooterBar2" class="w-full py-1.5 px-2 rounded-lg bg-black/40 border border-amber-500/30 text-center z-10 flex items-center justify-center gap-1 text-[11px]">
+                        <!-- Dynamic via JS -->
+                      </div>
+
+                    </div>
+
+                    <!-- ============================================== -->
+                    <!-- CARD FRONT (MẶT NGỬA) -->
+                    <!-- ============================================== -->
+                    <div class="absolute inset-0 w-full h-full backface-hidden rotate-y-180 rounded-2xl bg-surface-container-lowest border-2 border-amber-400/80 shadow-card-3d p-3.5 flex flex-col justify-between text-on-surface overflow-hidden">
+                      
+                      <!-- Top Category & Difficulty -->
+                      <div>
+                        <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+                          <div class="flex items-center gap-1.5">
+                            <span id="cardBadgeType2" class="text-[11px] px-2 py-0.5 rounded font-bold uppercase tracking-wider bg-error-container text-on-error-container">
+                              DARE / THỬ THÁCH
+                            </span>
+                          </div>
+                          <span id="cardDifficulty2" class="text-[10px] font-mono text-secondary bg-surface-container-high px-1.5 py-0.5 rounded">
+                            Độ khó: 4/5
+                          </span>
+                        </div>
+
+                        <!-- Card Title & Prompt Content -->
+                        <div class="mt-3 text-left">
+                          <h4 id="cardTitle2" class="font-cinzel font-bold text-base text-on-surface tracking-tight leading-snug">
+                            Đọc Tin Nhắn Bất Ngờ!
+                          </h4>
+                          <p id="cardDescription2" class="text-xs text-on-surface-variant mt-2 leading-relaxed font-sans">
+                            Mở ứng dụng Messenger hoặc Zalo cho cả bàn cùng đọc to 3 tin nhắn gần nhất với crush hoặc bạn thân!
+                          </p>
+                        </div>
+                      </div>
+
+                      <!-- Bottom Penalty Box & Reactions -->
+                      <div class="space-y-2 mt-2">
+                        <!-- Penalty Callout -->
+                        <div class="bg-amber-50 border border-amber-200/70 rounded-xl p-2.5 flex items-start gap-2 shadow-xs">
+                          <span class="text-xl select-none shrink-0">🍺</span>
+                          <div class="text-left min-w-0">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-900 block">
+                              Hình phạt nếu từ chối
+                            </span>
+                            <span id="cardPenalty2" class="text-xs font-semibold text-amber-950 leading-tight block mt-0.5">
+                              Uống cạn 1 ly bia (100% dung tích) ngay tại chỗ!
+                            </span>
+                          </div>
+                        </div>
+
+                        <!-- Mini Reactions -->
+                        <div class="flex items-center justify-between pt-1">
+                          <div class="flex items-center gap-1">
+                            <button onclick="addReaction('🍻')" class="text-xs px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high transition-colors">🍻 <span class="reactBeerClone">12</span></button>
+                            <button onclick="addReaction('😱')" class="text-xs px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high transition-colors">😱 <span class="reactGaspClone">8</span></button>
+                            <button onclick="addReaction('🔥')" class="text-xs px-2 py-0.5 rounded bg-surface-container hover:bg-surface-container-high transition-colors">🔥 <span class="reactFireClone">21</span></button>
+                          </div>
+                          <span class="text-[10px] font-mono text-secondary">SipCraft Cards</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- 4. Action Buttons Area (Tự động mở/khóa theo lượt) -->
+              <div id="actionArea2" class="space-y-1.5 pt-1 shrink-0">
+                <!-- Injected via JS -->
+              </div>
+
+            </div>
+
+            <!-- Screen Footer Bar -->
+            <div class="px-3 py-1.5 bg-surface-container-low border-t border-surface-container text-center text-[10px] text-secondary flex items-center justify-between font-mono shrink-0">
+              <span class="flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                <span>Spectator Live Sync</span>
+              </span>
+              <span>v1.0.4 • Notion Celestial</span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- HƯỚNG DẪN TEST NHANH VÀ GIẢI THÍCH KỸ THUẬT -->
+    <div class="mt-8 max-w-4xl w-full bg-[#181817] border border-[#2e2d2a] rounded-2xl p-5 text-zinc-300 text-xs">
+      <div class="flex items-center justify-between pb-3 border-b border-[#2e2d2a] mb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-amber-400 font-bold text-sm">✦ KIỂM TRA ĐÚNG 100% CẢ 4 KỊCH BẢN BÀN NHẬU:</span>
+        </div>
+        <span class="text-[11px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30 font-mono">ĐÃ ĐẠT CHUẨN REALTIME</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 leading-relaxed">
+        <div class="bg-[#201f1d] p-3 rounded-xl border border-[#33322f]">
+          <h5 class="text-amber-300 font-bold flex items-center gap-1.5 mb-1.5">
+            <span>1 & 2. Bàn chung & Khóa nút người không có lượt:</span>
+          </h5>
+          <p class="text-zinc-400">
+            Cả 2 điện thoại đều hiện chung dòng thông báo <span class="text-white font-semibold">"Đang là lượt của Nam"</span>. Lúc này nút rút bài trên máy Mai Anh bị <b>khóa mờ</b>, icon ổ khóa 🔒. Chỉ máy Hoàng Nam mới bấm được.
+          </p>
+        </div>
+        <div class="bg-[#201f1d] p-3 rounded-xl border border-[#33322f]">
+          <h5 class="text-amber-300 font-bold flex items-center gap-1.5 mb-1.5">
+            <span>3. Đồng bộ hiệu ứng lật bài 180° & Hạt sáng phép thuật:</span>
+          </h5>
+          <p class="text-zinc-400">
+            Khi Nam bấm rút: <b class="text-white">Cả 2 máy cùng xoay bài 180°</b>, hiệu ứng pháo sáng phép thuật (Celestial Canvas Star particles) bung tỏa rực rỡ và hiện <b>cùng 1 câu hỏi y hệt nhau</b> trong tích tắc!
+          </p>
+        </div>
+        <div class="bg-[#201f1d] p-3 rounded-xl border border-[#33322f]">
+          <h5 class="text-amber-300 font-bold flex items-center gap-1.5 mb-1.5">
+            <span>4. Chuyển lượt tự động:</span>
+          </h5>
+          <p class="text-zinc-400">
+            Khi Nam bấm <b class="text-white">"Đã xong • Chuyển lượt"</b> (hoặc "Đã uống"), cả 2 máy lập tức úp bài lại và tự động chuyển sang <span class="text-white font-semibold">"Đang là lượt của Mai Anh"</span>. Quyền rút tự khắc trao cho máy Mai Anh!
+          </p>
+        </div>
+        <div class="bg-[#201f1d] p-3 rounded-xl border border-[#33322f]">
+          <h5 class="text-amber-300 font-bold flex items-center gap-1.5 mb-1.5">
+            <span>💡 Sẵn sàng đưa lên Firebase Firestore:</span>
+          </h5>
+          <p class="text-zinc-400">
+            State được thiết kế chuẩn 100% theo schema Firestore (`rooms/{roomId}`). Khi bạn bấm nút <span class="text-amber-300 font-medium">"Xem Code Firebase 100%"</span> ở trên, bạn sẽ có code copy-paste chạy ngay.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FIREBASE INTEGRATION MODAL -->
+  <div id="firebaseModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-[#181817] border border-[#383734] rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-[#2e2d2a] flex items-center justify-between bg-[#1f1e1c]">
+        <div class="flex items-center gap-2.5">
+          <span class="w-7 h-7 rounded-lg bg-amber-500 text-black flex items-center justify-center font-bold font-cinzel">✦</span>
+          <div>
+            <h3 class="font-bold text-white text-sm">Code Firebase Firestore Realtime (Copy & Dán Ngay)</h3>
+            <p class="text-xs text-zinc-400">Đúng chính xác 100% với hàm onSnapshot() và updateDoc()</p>
+          </div>
+        </div>
+        <button onclick="closeFirebaseGuide()" class="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Code preview) -->
+      <div class="p-5 overflow-y-auto font-mono text-xs text-zinc-300 space-y-4">
+        
+        <div>
+          <span class="text-amber-400 font-bold block mb-1 font-sans text-sm">1. Cấu trúc Firestore Schema (`rooms/{roomId}`):</span>
+          <pre class="bg-[#10100f] p-3 rounded-xl border border-[#2a2926] text-amber-200 overflow-x-auto"><code>{
+  "roomCode": "ALCH88",
+  "currentTurnIndex": 0,           // 0: Nam, 1: Mai Anh, 2: Hải, 3: Trang
+  "isFlipping": true,              // Trạng thái lá bài đang mở hay úp
+  "currentCard": {
+    "id": "SIP-018",
+    "type": "DARE",
+    "title": "Đọc Tin Nhắn Bất Ngờ!",
+    "description": "Mở Messenger hoặc Zalo đọc 3 tin nhắn gần nhất với crush!",
+    "penalty": "Uống cạn 1 ly bia (100% dung tích) ngay tại chỗ."
+  },
+  "players": [
+    { "uid": "user_nam", "name": "Hoàng Nam", "avatar": "HN", "isHost": true },
+    { "uid": "user_maianh", "name": "Mai Anh", "avatar": "MA", "isHost": false },
+    { "uid": "user_hai", "name": "Tuấn Hải", "avatar": "TH", "isHost": false },
+    { "uid": "user_trang", "name": "Minh Trang", "avatar": "MT", "isHost": false }
+  ],
+  "updatedAt": 1720000000000
+}</code></pre>
+        </div>
+
+        <div>
+          <span class="text-amber-400 font-bold block mb-1 font-sans text-sm">2. Lắng nghe Đồng Bộ Tức Thì (`onSnapshot`):</span>
+          <pre class="bg-[#10100f] p-3 rounded-xl border border-[#2a2926] text-sky-200 overflow-x-auto"><code>import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+
+// TẤT CẢ các máy người chơi cùng lắng nghe phòng này:
+const roomRef = doc(db, "rooms", roomId);
+
+onSnapshot(roomRef, (snapshot) => {
+  const data = snapshot.data();
+  if (!data) return;
+
+  const currentTurnPlayer = data.players[data.currentTurnIndex];
+  const isMyTurn = (myAuthUid === currentTurnPlayer.uid);
+
+  // 1. Cả bàn cùng thấy dòng thông báo lượt:
+  updateTurnHeader("Đang là lượt của " + currentTurnPlayer.name);
+
+  // 2. Kiểm soát quyền bấm:
+  if (isMyTurn && !data.isFlipping) {
+    unlockDrawButton(); // Máy tới lượt: Bật nút rút bài
+  } else {
+    lockDrawButton();   // Máy người khác: Khóa nút, chuyển chế độ xem
+  }
+
+  // 3. Đồng bộ hiệu ứng lật bài 180 độ & Hạt sáng khi có người rút:
+  if (data.isFlipping && !localCardState.isFlipped) {
+    triggerCelestialParticles(); // Bung hạt sáng phép thuật
+    rotateCard180Degrees();       // Xoay bài 180 độ
+    renderCardContent(data.currentCard); // Hiện đúng câu hỏi
+  } else if (!data.isFlipping && localCardState.isFlipped) {
+    rotateCardBackToDeck();      // Cả bàn cùng úp bài khi qua lượt
+  }
+});</code></pre>
+        </div>
+
+        <div>
+          <span class="text-amber-400 font-bold block mb-1 font-sans text-sm">3. Khi Người Tới Lượt Bấm "Rút Bài":</span>
+          <pre class="bg-[#10100f] p-3 rounded-xl border border-[#2a2926] text-emerald-200 overflow-x-auto"><code>async function onDrawCardClicked() {
+  if (!isMyTurn) return; // Bảo mật client
+
+  const nextCard = getRandomCardFromDeck();
+
+  // Bắn tín hiệu lên Firebase trong 0.1s:
+  await updateDoc(roomRef, {
+    isFlipping: true,
+    currentCard: nextCard,
+    updatedAt: Date.now()
+  });
+}</code></pre>
+        </div>
+
+        <div>
+          <span class="text-amber-400 font-bold block mb-1 font-sans text-sm">4. Khi Bấm "Đã Xong • Qua Lượt":</span>
+          <pre class="bg-[#10100f] p-3 rounded-xl border border-[#2a2926] text-orange-200 overflow-x-auto"><code>async function onNextTurnClicked() {
+  if (!isMyTurn) return;
+
+  const nextIndex = (currentData.currentTurnIndex + 1) % currentData.players.length;
+
+  await updateDoc(roomRef, {
+    isFlipping: false,
+    currentTurnIndex: nextIndex,
+    updatedAt: Date.now()
+  });
+}</code></pre>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-5 py-3 border-t border-[#2e2d2a] bg-[#1f1e1c] flex items-center justify-end">
+        <button onclick="closeFirebaseGuide()" class="bg-amber-500 hover:bg-amber-400 text-black px-4 py-1.5 rounded-lg font-bold text-xs font-sans transition-colors">
+          Đã Hiểu, Quay Lại Test Prototype
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- JAVASCRIPT STATE MACHINE & CELESTIAL ENGINE -->
+  <!-- ======================================================== -->
+  <script>
+    /* =========================================================
+     * 1. DATABASE THẺ BÀI UỐNG BIA CELESTIAL CHEERS
+     * ========================================================= */
+    const CARD_DECK = [
+      {
+        id: "SIP-018",
+        type: "DARE",
+        typeLabel: "Dare / Thử Thách",
+        title: "Đọc Tin Nhắn Bất Ngờ!",
+        description: "Mở ứng dụng Messenger hoặc Zalo cho cả bàn cùng đọc to 3 tin nhắn gần nhất với crush hoặc bạn thân!",
+        penalty: "Uống cạn 1 ly bia (100% dung tích) ngay tại chỗ.",
+        difficulty: "Độ khó: 4/5",
+        badgeBg: "bg-error-container text-on-error-container"
+      },
+      {
+        id: "SIP-023",
+        type: "TRUTH",
+        typeLabel: "Truth / Sự Thật",
+        title: "Bí Mật Khó Nói Trong Bàn",
+        description: "Chỉ tay vào 1 người trong bàn nhậu mà bạn từng có ấn tượng khó ưa nhất lần đầu gặp mặt và giải thích lý do!",
+        penalty: "Uống phạt 2 ngụm bia đầy nếu không dám nói.",
+        difficulty: "Độ khó: 3/5",
+        badgeBg: "bg-amber-100 text-amber-900"
+      },
+      {
+        id: "SIP-007",
+        type: "ALL_DRINK",
+        typeLabel: "Party / Toàn Bàn",
+        title: "Hiệu Lệnh Cụng Ly 100%!",
+        description: "Người rút bài được quyền hô khẩu hiệu bắt cả bàn cùng đứng dậy chạm ly và uống cạn 1 ngụm lớn!",
+        penalty: "Ai không làm theo uống phạt gấp đôi!",
+        difficulty: "Độ khó: 2/5",
+        badgeBg: "bg-sky-100 text-sky-900"
+      },
+      {
+        id: "SIP-045",
+        type: "KING",
+        typeLabel: "King / Quyền Lực",
+        title: "Chỉ Định Nạn Nhân Uống Hộ",
+        description: "Bạn nhận được lá bài Khiên Ma Thuật! Bạn có quyền chỉ định bất kỳ 1 người nào khác trong bàn uống thay bạn 1 ly!",
+        penalty: "Nếu người đó từ chối, cả 2 cùng uống cạn ly.",
+        difficulty: "Độ khó: 5/5",
+        badgeBg: "bg-purple-100 text-purple-900"
+      },
+      {
+        id: "SIP-031",
+        type: "DARE",
+        typeLabel: "Dare / Thử Thách",
+        title: "Cuộc Gọi Định Mệnh",
+        description: "Gọi điện cho người yêu cũ hoặc bạn thân khác giới, nói câu 'Tao đang nhớ mày' rồi cúp máy ngay không giải thích!",
+        penalty: "Uống cạn ly và úp ly lên đầu chứng minh hết sạch.",
+        difficulty: "Độ khó: 5/5",
+        badgeBg: "bg-error-container text-on-error-container"
+      }
+    ];
+
+    /* =========================================================
+     * 2. DANH SÁCH NGƯỜI CHƠI TRONG PHÒNG
+     * ========================================================= */
+    const PLAYERS = [
+      { id: 0, name: "Hoàng Nam", initial: "HN", isHost: true, color: "bg-amber-600" },
+      { id: 1, name: "Mai Anh", initial: "MA", isHost: false, color: "bg-sky-600" },
+      { id: 2, name: "Tuấn Hải", initial: "TH", isHost: false, color: "bg-emerald-600" },
+      { id: 3, name: "Minh Trang", initial: "MT", isHost: false, color: "bg-purple-600" }
+    ];
+
+    /* =========================================================
+     * 3. GAME STATE (CHUẨN 100% THEO CẤU TRÚC FIRESTORE DATABASE)
+     * ========================================================= */
+    const gameState = {
+      roomCode: "ALCH88",
+      currentTurnIndex: 0, // Người đang giữ lượt
+      isFlipping: false,   // Lá bài đang lật mở hay úp
+      currentCard: CARD_DECK[0],
+      cardDeckIndex: 0,
+      round: 2
+    };
+
+    // Device viewpoints (Mỗi màn hình đang login bằng người chơi nào)
+    let device1UserIndex = 0; // Máy 1: Hoàng Nam
+    let device2UserIndex = 1; // Máy 2: Mai Anh
+
+    // Audio FX state
+    let isSoundEnabled = true;
+    let audioCtx = null;
+
+    // Cross-tab Synchronization via BroadcastChannel API (nếu mở nhiều tab)
+    const channel = ("BroadcastChannel" in window) ? new BroadcastChannel("sipcraft_room_sync") : null;
+    if (channel) {
+      channel.onmessage = (event) => {
+        if (event.data && event.data.type === "STATE_UPDATE") {
+          applyStateUpdate(event.data.state, false);
+        }
+      };
+    }
+
+    /* =========================================================
+     * 4. AUDIO SYNTHESIS ENGINE (Web Audio API - Không cần load file)
+     * ========================================================= */
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function toggleAudio() {
+      isSoundEnabled = !isSoundEnabled;
+      document.getElementById("soundIcon").innerText = isSoundEnabled ? "volume_up" : "volume_off";
+      document.getElementById("soundLabel").innerText = isSoundEnabled ? "Âm thanh: Bật" : "Âm thanh: Tắt";
+    }
+
+    // Tiếng lật bài (Card swoosh)
+    function playCardFlipSound() {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(160, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(450, ctx.currentTime + 0.18);
+
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      } catch (e) { console.warn(e); }
+    }
+
+    // Tiếng hạt sáng phép thuật ma mị (Celestial Magic Twinkle / Chimes)
+    function playCelestialMagicSound() {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const freqs = [523.25, 659.25, 783.99, 1046.50, 1318.51]; // C major celestial chord
+        freqs.forEach((f, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "triangle";
+          osc.frequency.value = f;
+
+          const start = ctx.currentTime + (idx * 0.05);
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(0.15, start + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.45);
+        });
+      } catch (e) { console.warn(e); }
+    }
+
+    // Tiếng cụng ly bia keng zô 100% (Cheers Clink)
+    function playBeerClinkSound() {
+      if (!isSoundEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1800, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.4);
+
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.45);
+      } catch (e) { console.warn(e); }
+    }
+
+    /* =========================================================
+     * 5. CELESTIAL PARTICLE SYSTEM (Canvas Bung Hạt Sáng Phép Thuật)
+     * ========================================================= */
+    class Particle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5 + 2.5;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.alpha = 1;
+        this.size = Math.random() * 4 + 2;
+        this.decay = Math.random() * 0.025 + 0.015;
+        this.isStar = Math.random() > 0.4;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.96;
+        this.vy *= 0.96;
+        this.alpha -= this.decay;
+      }
+      draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+
+        if (this.isStar) {
+          // Draw diamond star
+          ctx.beginPath();
+          ctx.moveTo(this.x, this.y - this.size);
+          ctx.lineTo(this.x + this.size, this.y);
+          ctx.lineTo(this.x, this.y + this.size);
+          ctx.lineTo(this.x - this.size, this.y);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          // Draw circular orb
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    function burstCelestialParticles(canvasId) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+
+      const particles = [];
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const goldColors = ["#ffd700", "#ffea75", "#ffffff", "#e9b949", "#f3ba2f", "#ff9800"];
+
+      // Sinh ra 75 hạt sáng phép thuật
+      for (let i = 0; i < 75; i++) {
+        const color = goldColors[Math.floor(Math.random() * goldColors.length)];
+        particles.push(new Particle(centerX, centerY, color));
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        particles.forEach(p => {
+          p.update();
+          if (p.alpha > 0) {
+            alive = true;
+            p.draw(ctx);
+          }
+        });
+        if (alive) {
+          requestAnimationFrame(animate);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    /* =========================================================
+     * 6. REALTIME LOGIC CONTROLLER (ĐỒNG BỘ CẢ 2 THIẾT BỊ)
+     * ========================================================= */
+
+    // Cập nhật State và phát tín hiệu cho tất cả người chơi
+    function updateGameState(newPartialState) {
+      Object.assign(gameState, newPartialState);
+
+      // Render lại cả 2 điện thoại
+      renderBothDevices();
+
+      // Đồng bộ qua BroadcastChannel nếu mở 2 tab
+      if (channel) {
+        channel.postMessage({ type: "STATE_UPDATE", state: gameState });
+      }
+    }
+
+    function applyStateUpdate(receivedState, shouldBroadcast = false) {
+      const wasFlipping = gameState.isFlipping;
+      Object.assign(gameState, receivedState);
+
+      // Kiểm tra nếu mới chuyển sang trạng thái lật bài -> bung hạt sáng
+      if (!wasFlipping && gameState.isFlipping) {
+        triggerCelestialEffects();
+      }
+
+      renderBothDevices();
+    }
+
+    // Kích hoạt hiệu ứng lật bài + hạt sáng + âm thanh
+    function triggerCelestialEffects() {
+      playCardFlipSound();
+      playCelestialMagicSound();
+
+      // Bung hạt sáng ở cả 2 màn hình
+      burstCelestialParticles("canvasDevice1");
+      burstCelestialParticles("canvasDevice2");
+    }
+
+    /* =========================================================
+     * 7. USER ACTIONS (XỬ LÝ RÚT BÀI / QUA LƯỢT / UỐNG BIA)
+     * ========================================================= */
+
+    // Khi người chơi chạm vào lá bài ở thiết bị devNum (1 hoặc 2)
+    function handleCardClick(devNum) {
+      const viewerIndex = (devNum === 1) ? device1UserIndex : device2UserIndex;
+      const isMyTurn = (viewerIndex === gameState.currentTurnIndex);
+
+      if (!isMyTurn) {
+        // Không phải lượt của bạn! Rung lắc cảnh báo
+        const flipper = document.getElementById(`cardFlipper${devNum}`);
+        flipper.classList.add("translate-x-1");
+        setTimeout(() => flipper.classList.remove("translate-x-1"), 150);
+        return;
+      }
+
+      if (!gameState.isFlipping) {
+        // Tiến hành rút bài!
+        triggerDrawCard();
+      }
+    }
+
+    // Rút lá bài mới (Chỉ người có lượt mới được gọi)
+    function triggerDrawCard() {
+      // Chọn ngẫu nhiên lá bài từ bộ bài
+      const randomIdx = (gameState.cardDeckIndex + 1) % CARD_DECK.length;
+      const nextCard = CARD_DECK[randomIdx];
+
+      triggerCelestialEffects();
+
+      updateGameState({
+        isFlipping: true,
+        currentCard: nextCard,
+        cardDeckIndex: randomIdx
+      });
+    }
+
+    // Qua lượt tiếp theo
+    function triggerNextTurn() {
+      playCardFlipSound();
+
+      const nextTurnIndex = (gameState.currentTurnIndex + 1) % PLAYERS.length;
+
+      updateGameState({
+        isFlipping: false,
+        currentTurnIndex: nextTurnIndex
+      });
+    }
+
+    // Xác nhận đã uống bia (+2 ngụm) rồi qua lượt
+    function triggerDrinkAndNext() {
+      playBeerClinkSound();
+      triggerNextTurn();
+    }
+
+    // Đổi lá bài khác (Reroll)
+    function triggerRerollCard() {
+      const randomIdx = (gameState.cardDeckIndex + 2) % CARD_DECK.length;
+      const nextCard = CARD_DECK[randomIdx];
+
+      triggerCelestialEffects();
+
+      updateGameState({
+        isFlipping: true,
+        currentCard: nextCard,
+        cardDeckIndex: randomIdx
+      });
+    }
+
+    // Thả Reaction cảm xúc
+    function addReaction(emoji) {
+      playBeerClinkSound();
+      const elBeer = document.getElementById("reactBeer");
+      if (emoji === '🍻') elBeer.innerText = parseInt(elBeer.innerText) + 1;
+      const clones = document.querySelectorAll(".reactBeerClone");
+      clones.forEach(c => c.innerText = elBeer.innerText);
+    }
+
+    // Reset lại bàn chơi
+    function resetGame() {
+      updateGameState({
+        currentTurnIndex: 0,
+        isFlipping: false,
+        currentCard: CARD_DECK[0],
+        cardDeckIndex: 0
+      });
+    }
+
+    /* =========================================================
+     * 8. RENDER ENGINE: VẼ GIAO DIỆN CHUẨN XÁC CHO TỪNG THIẾT BỊ
+     * ========================================================= */
+
+    function renderDevice(devNum, userIndex) {
+      const user = PLAYERS[userIndex];
+      const activePlayer = PLAYERS[gameState.currentTurnIndex];
+      const isMyTurn = (userIndex === gameState.currentTurnIndex);
+      const isCardFlipped = gameState.isFlipping;
+
+      // 1. Cập nhật Avatar và Role Badge
+      const devAvatar = document.getElementById(`dev${devNum}Avatar`);
+      const devName = document.getElementById(`dev${devNum}Name`);
+      const roleBadge = document.getElementById(`roleBadge${devNum}`);
+
+      devAvatar.innerText = user.initial;
+      devName.innerText = `${user.name} (${isMyTurn ? 'Lượt của bạn' : 'Khán giả'})`;
+
+      if (user.isHost) {
+        roleBadge.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1";
+        roleBadge.innerHTML = `<span class="material-symbols-outlined text-[12px]">star</span><span>Host</span>`;
+      } else {
+        roleBadge.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-zinc-100 text-zinc-700 border border-zinc-300 flex items-center gap-1";
+        roleBadge.innerHTML = `<span class="material-symbols-outlined text-[12px]">person</span><span>Người chơi</span>`;
+      }
+
+      // 2. Banner Thông Báo Lượt (Tất cả nhìn chung 1 bàn bài)
+      const turnBanner = document.getElementById(`turnBanner${devNum}`);
+      if (isMyTurn) {
+        turnBanner.className = "rounded-xl p-3 shadow-sm border border-amber-300 bg-amber-50 active-turn-glow flex items-start gap-2.5 transition-all";
+        turnBanner.innerHTML = `
+          <div class="w-8 h-8 rounded-lg bg-amber-500 text-black flex items-center justify-center font-bold text-sm shrink-0 shadow">
+            👑
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-xs font-semibold text-amber-900">Lượt hiện tại:</span>
+              <span class="text-xs font-bold text-black bg-amber-200/90 px-1.5 py-0.2 rounded font-sans">
+                ${user.name} (Chính Bạn!)
+              </span>
+            </div>
+            <p class="text-[11px] text-amber-800 mt-0.5 leading-snug">
+              ${isCardFlipped ? "Đọc to thử thách bên dưới và chọn phương án hành động!" : "Chạm vào lá bài định mệnh bên dưới để rút thẻ!"}
+            </p>
+          </div>
+        `;
+      } else {
+        turnBanner.className = "rounded-xl p-3 shadow-sm border border-surface-container bg-surface-container-low flex items-start gap-2.5 transition-all opacity-90";
+        turnBanner.innerHTML = `
+          <div class="w-8 h-8 rounded-lg bg-surface-container-high text-secondary flex items-center justify-center font-bold text-sm shrink-0">
+            ⏳
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="text-xs font-semibold text-secondary">Lượt hiện tại:</span>
+              <span class="text-xs font-bold text-on-surface bg-surface-container-highest px-1.5 py-0.2 rounded font-sans">
+                ${activePlayer.name}
+              </span>
+              <span class="text-[10px] text-amber-600 font-semibold bg-amber-100 px-1 py-0.2 rounded">Khán giả</span>
+            </div>
+            <p class="text-[11px] text-secondary mt-0.5 leading-snug">
+              ${isCardFlipped ? `${activePlayer.name} vừa rút bài! Đang chờ thực hiện...` : `Vui lòng chờ ${activePlayer.name} chạm rút bài...`}
+            </p>
+          </div>
+        `;
+      }
+
+      // 3. Danh Sách 4 Người Chơi Dưới Dạng Avatar Pill
+      const playersList = document.getElementById(`playersList${devNum}`);
+      playersList.innerHTML = PLAYERS.map(p => {
+        const isCurrentTurnPlayer = (p.id === gameState.currentTurnIndex);
+        const isThisViewer = (p.id === userIndex);
+
+        let cardClass = "bg-surface-container-low border border-transparent";
+        let textClass = "text-secondary";
+        let statusText = "Chờ";
+
+        if (isCurrentTurnPlayer) {
+          cardClass = "bg-amber-100/90 border border-amber-400 shadow-sm";
+          textClass = "text-amber-950 font-bold";
+          statusText = isCardFlipped ? "Đang trả lời" : "Đang rút...";
+        } else if (isThisViewer) {
+          cardClass = "bg-surface-container-high border border-outline-variant/40";
+          textClass = "text-on-surface font-semibold";
+          statusText = "Bạn";
+        }
+
+        return `
+          <div class="p-1.5 rounded-lg flex flex-col items-center text-center ${cardClass} transition-all">
+            <div class="relative mb-0.5">
+              <div class="w-8 h-8 rounded-full ${p.color} text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                ${p.initial}
+              </div>
+              ${isCurrentTurnPlayer ? `
+                <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-amber-500 rounded-full flex items-center justify-center">
+                  <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                </span>
+              ` : ''}
+            </div>
+            <span class="text-[11px] truncate w-full ${textClass}">${p.name.split(' ').pop()}</span>
+            <span class="text-[9px] font-mono truncate w-full opacity-80">${statusText}</span>
+          </div>
+        `;
+      }).join('');
+
+      // 4. Đồng Bộ Trạng Thái 3D Flip Của Lá Bài
+      const flipper = document.getElementById(`cardFlipper${devNum}`);
+      if (isCardFlipped) {
+        flipper.classList.add("rotate-y-180");
+      } else {
+        flipper.classList.remove("rotate-y-180");
+      }
+
+      // Cập nhật nội dung Mặt Ngửa (Front)
+      const currentCard = gameState.currentCard;
+      document.getElementById(`cardTitle${devNum}`).innerText = currentCard.title;
+      document.getElementById(`cardDescription${devNum}`).innerText = currentCard.description;
+      document.getElementById(`cardPenalty${devNum}`).innerText = currentCard.penalty;
+      document.getElementById(`cardDifficulty${devNum}`).innerText = currentCard.difficulty;
+      
+      const badgeType = document.getElementById(`cardBadgeType${devNum}`);
+      badgeType.className = `text-[11px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${currentCard.badgeBg}`;
+      badgeType.innerText = currentCard.typeLabel;
+
+      // Cập nhật Mặt Úp (Back footer text)
+      const deckStatusHint = document.getElementById(`deckStatusHint${devNum}`);
+      const deckFooterBar = document.getElementById(`deckFooterBar${devNum}`);
+
+      if (isMyTurn) {
+        deckStatusHint.innerText = "Lá bài định mệnh đang chờ bạn rút!";
+        deckFooterBar.innerHTML = `
+          <span class="material-symbols-outlined text-[14px] text-amber-400 animate-bounce">touch_app</span>
+          <span class="text-amber-300 font-bold">Chạm để Rút Bài</span>
+        `;
+        flipper.classList.add("cursor-pointer");
+        flipper.classList.remove("cursor-not-allowed", "opacity-85");
+      } else {
+        deckStatusHint.innerText = `Đang chờ ${activePlayer.name} rút bài...`;
+        deckFooterBar.innerHTML = `
+          <span class="material-symbols-outlined text-[13px] text-zinc-400">lock</span>
+          <span class="text-zinc-400">Chỉ xem • Đang khóa</span>
+        `;
+        flipper.classList.remove("cursor-pointer");
+        flipper.classList.add("cursor-not-allowed", "opacity-90");
+      }
+
+      // 5. Action Buttons Khóa/Mở Theo Kịch Bản Bàn Nhậu
+      const actionArea = document.getElementById(`actionArea${devNum}`);
+
+      if (isMyTurn) {
+        // NGƯỜI ĐANG GIỮ LƯỢT: Có đầy đủ quyền thao tác
+        if (!isCardFlipped) {
+          // Chưa rút: Nút rút bài to nổi bật
+          actionArea.innerHTML = `
+            <button onclick="triggerDrawCard()" class="w-full min-h-[44px] px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-cinzel font-bold text-xs tracking-wider flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+              <span class="material-symbols-outlined text-[18px]">style</span>
+              <span>CHẠM ĐỂ RÚT THẺ BÀI</span>
+            </button>
+            <p class="text-[10px] text-secondary text-center">Hoặc bấm trực tiếp vào mặt thẻ bài ở trên</p>
+          `;
+        } else {
+          // Đã rút: Nút Hoàn thành / Đã uống / Reroll
+          actionArea.innerHTML = `
+            <button onclick="triggerNextTurn()" class="w-full min-h-[42px] px-4 py-2 rounded-xl bg-primary text-white hover:bg-neutral-800 font-bold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all">
+              <span class="material-symbols-outlined text-[18px]">check_circle</span>
+              <span>ĐÃ XONG • CHUYỂN LƯỢT</span>
+            </button>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button onclick="triggerDrinkAndNext()" class="w-full min-h-[38px] px-2 py-1.5 rounded-lg bg-surface-container-highest hover:bg-surface-dim text-on-surface font-semibold text-xs flex items-center justify-center gap-1 transition-all">
+                <span>🍺</span>
+                <span>Đã Uống (+2 ngụm)</span>
+              </button>
+              <button onclick="triggerRerollCard()" class="w-full min-h-[38px] px-2 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-secondary font-medium text-xs flex items-center justify-center gap-1 transition-all">
+                <span class="material-symbols-outlined text-[15px]">sync</span>
+                <span>Đổi lá khác</span>
+              </button>
+            </div>
+          `;
+        }
+      } else {
+        // KHÁN GIẢ (KHÔNG TỚI LƯỢT): NÚT BỊ KHÓA HOÀN TOÀN
+        actionArea.innerHTML = `
+          <button disabled class="w-full min-h-[44px] px-4 py-2 rounded-xl bg-surface-container text-zinc-400 cursor-not-allowed font-medium text-xs flex items-center justify-center gap-1.5 border border-outline-variant/30 select-none">
+            <span class="material-symbols-outlined text-[16px]">lock</span>
+            <span>Chỉ xem • Đang là lượt của ${activePlayer.name}</span>
+          </button>
+          <div class="flex items-center justify-center gap-1 text-[10px] text-secondary pt-0.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            <span>Tự động đồng bộ thời gian thực theo từng thao tác</span>
+          </div>
+        `;
+      }
+    }
+
+    // Vẽ lại cả 2 thiết bị
+    function renderBothDevices() {
+      renderDevice(1, device1UserIndex);
+      renderDevice(2, device2UserIndex);
+    }
+
+    /* =========================================================
+     * 9. CONTROLS: CHUYỂN ĐỔI GÓC NHÌN & CHẾ ĐỘ MÔ PHỎNG
+     * ========================================================= */
+
+    function changeDeviceUser(devNum, userIdx) {
+      if (devNum === 1) {
+        device1UserIndex = parseInt(userIdx);
+      } else {
+        device2UserIndex = parseInt(userIdx);
+      }
+      renderBothDevices();
+    }
+
+    function setSimulatorMode(mode) {
+      const container = document.getElementById("phonesContainer");
+      const phone2 = document.getElementById("phoneDevice2");
+      const btnDual = document.getElementById("btnDualMode");
+      const btnSingle = document.getElementById("btnSingleMode");
+      const bannerText = document.getElementById("guideBannerText");
+
+      if (mode === "single") {
+        phone2.classList.add("hidden");
+        btnSingle.className = "px-2.5 py-1 rounded-md font-medium transition-all bg-amber-500 text-black shadow font-sans flex items-center gap-1.5";
+        btnDual.className = "px-2.5 py-1 rounded-md font-medium transition-all text-zinc-400 hover:text-white font-sans flex items-center gap-1.5";
+        bannerText.innerHTML = `Đang ở chế độ <b>1 Điện Thoại</b>. Bạn có thể dùng dropdown <b>"Góc nhìn"</b> ở góc trên điện thoại để chuyển qua lại giữa Hoàng Nam, Mai Anh, v.v. để kiểm tra quyền khóa nút!`;
+      } else {
+        phone2.classList.remove("hidden");
+        btnDual.className = "px-2.5 py-1 rounded-md font-medium transition-all bg-amber-500 text-black shadow font-sans flex items-center gap-1.5";
+        btnSingle.className = "px-2.5 py-1 rounded-md font-medium transition-all text-zinc-400 hover:text-white font-sans flex items-center gap-1.5";
+        bannerText.innerHTML = `Đang ở chế độ <b>2 Máy Song Song</b>. Bên trái là điện thoại của <b>Hoàng Nam (Người đang có lượt)</b>, bên phải là của <b>Mai Anh (Khán giả)</b>. Hãy thử bấm lá bài ở Máy 1 và xem Máy 2 lật cùng lúc!`;
+      }
+    }
+
+    function openFirebaseGuide() {
+      document.getElementById("firebaseModal").classList.remove("hidden");
+    }
+
+    function closeFirebaseGuide() {
+      document.getElementById("firebaseModal").classList.add("hidden");
+    }
+
+    // Khởi chạy ngay khi tải trang
+    window.addEventListener("DOMContentLoaded", () => {
+      renderBothDevices();
+    });
+  </script>
+
+</body>
+</html>

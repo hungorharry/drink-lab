@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  body {
+    overscroll-behavior-y: none;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+}
+
+* {
+  font-family: Arial, Helvetica, sans-serif;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Shimmer Animation cho mặt úp lá bài */
+@keyframes celestialShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.celestial-shimmer {
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 225, 130, 0.25) 45%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 225, 130, 0.25) 55%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: celestialShimmer 4s infinite linear;
+}
+
+/* Floating Emoji Animation khi cả bàn thả haha / buồn cười */
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.8) rotate(0deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-80px) scale(1.2) rotate(-10deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-160px) scale(1.4) rotate(10deg);
+  }
+}
+
+.floating-emoji {
+  position: absolute;
+  pointer-events: none;
+  animation: floatUp 1.4s ease-out forwards;
+  z-index: 50;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}

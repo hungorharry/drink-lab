@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><title>Bàn Chơi</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { secondary: "#615e5a", "on-primary": "#ffffff", "secondary-container": "#e7e2dc", "surface-dim": "#ded9d1", "on-primary-fixed-variant": "#474746", "on-tertiary-container": "#2785e5", "surface-bright": "#fef9ef", "on-primary-fixed": "#1c1b1b", "outline-variant": "#c4c7c7", "inverse-surface": "#32302a", "on-secondary-fixed": "#1d1b18", "tertiary-fixed-dim": "#a4c9ff", background: "#fef9ef", "inverse-on-surface": "#f5f0e7", "on-secondary-container": "#676460", "primary-container": "#1c1b1b", "on-tertiary-fixed": "#001c39", "on-error": "#ffffff", "on-tertiary": "#ffffff", "surface-container": "#f3ede4", "tertiary-container": "#001c39", "on-secondary": "#ffffff", "on-tertiary-fixed-variant": "#004884", "error-container": "#ffdad6", "on-primary-container": "#858383", "surface-container-lowest": "#ffffff", "secondary-fixed": "#e7e2dc", "surface-container-highest": "#e7e2d9", "on-surface": "#1d1c16", "on-surface-variant": "#444748", "primary-fixed": "#e5e2e1", tertiary: "#000000", "surface-container-low": "#f8f3ea", "surface-variant": "#e7e2d9", primary: "#000000", "tertiary-fixed": "#d4e3ff", error: "#ba1a1a", surface: "#fef9ef", "on-secondary-fixed-variant": "#494643", "secondary-fixed-dim": "#cbc6c0", "on-background": "#1d1c16", "inverse-primary": "#c8c6c5", "on-error-container": "#93000a", outline: "#747878", "surface-container-high": "#ede8df", "surface-tint": "#5f5e5e", "primary-fixed-dim": "#c8c6c5" }, borderRadius: { DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem" }, spacing: { "space-lg": "1.25rem", gutter: "1rem", margin: "1rem", "margin-tablet": "2rem", "gutter-desktop": "1.5rem", "space-sm": "0.5rem", "margin-desktop": "4rem", "space-xl": "2rem", "space-md": "0.75rem", "space-xs": "0.25rem" }, fontFamily: { "code-inline": ["JetBrains Mono"], "body-sm": ["Inter"], "label-sm": ["Inter"], "headline-sm": ["Inter"], "body-lg": ["Inter"], "headline-md": ["Inter"], "headline-xl-mobile": ["Inter"], "headline-lg-mobile": ["Inter"], "body-md": ["Inter"], "headline-xl": ["Inter"], "headline-lg": ["Inter"], "label-md": ["Inter"] }, fontSize: { "code-inline": ["12.5px", { lineHeight: "18px", letterSpacing: "0em", fontWeight: "400" }], "body-sm": ["13px", { lineHeight: "19px", letterSpacing: "0em", fontWeight: "400" }], "label-sm": ["11px", { lineHeight: "14px", letterSpacing: "0.02em", fontWeight: "500" }], "headline-sm": ["18px", { lineHeight: "26px", letterSpacing: "-0.015em", fontWeight: "600" }], "body-lg": ["16px", { lineHeight: "26px", letterSpacing: "-0.01em", fontWeight: "400" }], "headline-md": ["24px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "600" }], "headline-xl-mobile": ["30px", { lineHeight: "38px", letterSpacing: "-0.025em", fontWeight: "700" }], "headline-lg-mobile": ["24px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "600" }], "body-md": ["14px", { lineHeight: "22px", letterSpacing: "-0.006em", fontWeight: "400" }], "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.03em", fontWeight: "700" }], "headline-lg": ["30px", { lineHeight: "38px", letterSpacing: "-0.025em", fontWeight: "700" }], "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.01em", fontWeight: "500" }] } } } };</script><style>@layer base { html, body { min-height: 100%; margin: 0; padding: 0; } body { overscroll-behavior-y: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); } .pt-safe { padding-top: env(safe-area-inset-top, 0px); } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface font-body-md text-body-md antialiased min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-14 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-sm min-w-0 flex-1"><div class="flex flex-col min-w-0"><div class="flex items-center gap-space-xs"><span class="truncate font-headline-sm text-headline-sm text-on-surface">✦ SipCraft / Game Arena</span></div><div class="flex items-center gap-space-xs mt-0.5"><span class="font-code-inline text-code-inline text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded"># ALCH88</span><span class="font-label-sm text-label-sm text-secondary bg-surface-container-low px-1.5 py-0.5 rounded flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">group</span><span>4/8</span></span></div></div></div><div class="flex items-center gap-space-xs shrink-0"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 w-full bg-surface pt-14 pb-20 px-margin flex flex-col"><div class="flex flex-col w-full gap-space-md">
+<!-- 1. Notion Workspace Breadcrumbs & Metadata -->
+<div class="flex items-center justify-between py-1">
+<div class="flex items-center gap-1.5 overflow-hidden">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0">inventory_2</span>
+<span class="font-label-sm text-label-sm text-secondary truncate">Không Gian Chơi</span>
+<span class="text-secondary text-[12px]">/</span>
+<span class="font-label-sm text-label-sm text-secondary truncate">Phòng ALCH88</span>
+<span class="text-secondary text-[12px]">/</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold shrink-0">Lượt #14</span>
+</div>
+<div class="flex items-center gap-1 shrink-0">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-code-inline text-code-inline text-secondary">LIVE</span>
+</div>
+</div>
+<!-- 2. Turn Status Banner (Notion Callout Block) -->
+<div class="bg-surface-container rounded-xl p-space-md flex flex-col gap-space-sm shadow-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-[16px] shadow-sm shrink-0">
+        ⚡
+      </div>
+<div class="min-w-0 flex-1">
+<div class="flex items-center gap-1.5 flex-wrap">
+<span class="font-headline-sm text-headline-sm text-on-surface leading-tight">Đến lượt Hoàng Nam</span>
+<span class="font-label-sm text-label-sm bg-surface text-secondary px-1.5 py-0.5 rounded shadow-sm">Bạn</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Chọn hành động hoặc thực hiện thử thách bên dưới</p>
+</div>
+</div>
+<!-- Players turn queue bar -->
+<div class="flex items-center gap-1.5 overflow-x-auto pt-1 pb-0.5">
+<div class="flex items-center gap-1 px-2 py-1 bg-surface rounded text-on-surface shadow-sm shrink-0">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span class="font-label-sm text-label-sm font-semibold">Nam</span>
+<span class="font-code-inline text-code-inline text-secondary">(3 ngụm)</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-1 bg-surface-container-high rounded text-on-surface-variant shrink-0">
+<span class="font-label-sm text-label-sm">Mai Anh</span>
+<span class="font-code-inline text-code-inline text-secondary">(1 ly)</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-1 bg-surface-container-high rounded text-on-surface-variant shrink-0">
+<span class="font-label-sm text-label-sm">Tuấn Hải</span>
+<span class="font-code-inline text-code-inline text-secondary">(4 ngụm)</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-1 bg-surface-container-high rounded text-on-surface-variant shrink-0">
+<span class="font-label-sm text-label-sm">Minh Trang</span>
+<span class="font-code-inline text-code-inline text-secondary">(2 ngụm)</span>
+</div>
+</div>
+</div>
+<!-- 3. The Active Card: Crisp Notion Document Modal Card -->
+<article class="bg-surface-container-lowest rounded-xl shadow-md p-space-lg flex flex-col gap-space-md transition-all">
+<!-- Card Document Top Identity -->
+<div class="flex items-start justify-between gap-space-sm">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-[28px] shrink-0 select-none shadow-sm">
+        🎯
+      </div>
+<div class="flex flex-wrap items-center justify-end gap-1.5">
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-error-container text-on-error-container font-medium">
+          Dare / Thử Thách
+        </span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container-high text-secondary font-medium">
+          Độ khó: 4/5
+        </span>
+</div>
+</div>
+<!-- Card Title & Prompt Content -->
+<div class="space-y-1.5">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface font-semibold tracking-tight">
+        Đọc Tin Nhắn Bất Ngờ!
+      </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+        Mở ứng dụng Messenger hoặc Zalo cho cả bàn cùng đọc to 3 tin nhắn gần nhất với crush hoặc bạn thân!
+      </p>
+</div>
+<!-- Notion Warning Callout Box for Penalty -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex items-start gap-space-sm">
+<div class="text-[20px] select-none shrink-0 mt-0.5">
+        🍺
+      </div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm font-semibold uppercase tracking-wider text-secondary">
+          Hình Phạt Nếu Từ Chối
+        </span>
+<p class="font-body-md text-body-md text-on-surface font-medium mt-0.5">
+          Uống cạn 1 ly bia (100% dung tích) ngay tại chỗ.
+        </p>
+</div>
+</div>
+<!-- Reactions row -->
+<div class="flex items-center gap-1.5 flex-wrap pt-1">
+<button class="reaction-btn flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high transition-colors select-none" type="button">
+<span class="text-[14px]">🍻</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">12</span>
+</button>
+<button class="reaction-btn flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high transition-colors select-none" type="button">
+<span class="text-[14px]">😱</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">8</span>
+</button>
+<button class="reaction-btn flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high transition-colors select-none" type="button">
+<span class="text-[14px]">😂</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">15</span>
+</button>
+<button class="reaction-btn flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high transition-colors select-none" type="button">
+<span class="text-[14px]">🔥</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">21</span>
+</button>
+<button class="flex items-center justify-center w-7 h-7 rounded bg-surface-container text-secondary hover:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">add_reaction</span>
+</button>
+</div>
+</article>
+<!-- 4. Action Buttons (Notion Button Style) -->
+<div class="flex flex-col gap-2">
+<!-- Primary action -->
+<button class="w-full min-h-[46px] px-space-md py-2.5 rounded-lg bg-primary text-on-primary hover:bg-on-primary-fixed active:bg-secondary font-headline-sm text-headline-sm flex items-center justify-center gap-2 shadow-sm transition-all" id="btn-complete" type="button">
+<span class="material-symbols-outlined text-[20px]">check</span>
+<span>Đã xong • Chuyển lượt</span>
+</button>
+<!-- Secondary action -->
+<div class="grid grid-cols-2 gap-2">
+<button class="w-full min-h-[42px] px-space-sm py-2 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container-low active:bg-surface-container font-body-md text-body-md font-medium flex items-center justify-center gap-1.5 shadow-sm transition-all" id="btn-drink" type="button">
+<span class="text-[15px]">🍺</span>
+<span class="truncate">Đã uống (+2 ngụm)</span>
+</button>
+<button class="w-full min-h-[42px] px-space-sm py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high active:bg-surface-dim font-body-md text-body-md font-medium flex items-center justify-center gap-1.5 transition-all" id="btn-reroll" type="button">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+<span class="truncate">Đổi lá bài khác</span>
+</button>
+</div>
+</div>
+<!-- 5. Notion Database Inline Properties & Metrics Bar -->
+<section class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm">
+<div class="flex items-center justify-between text-secondary">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px]">table_chart</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider font-semibold">Thông số phiên chơi</span>
+</div>
+<span class="font-code-inline text-code-inline text-secondary">Vòng 2</span>
+</div>
+<!-- Properties Rows -->
+<div class="flex flex-col gap-1.5 text-on-surface">
+<div class="flex items-center justify-between text-body-sm">
+<span class="flex items-center gap-1 text-secondary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[14px]">style</span>
+          Bộ bài còn lại:
+        </span>
+<span class="font-code-inline text-code-inline font-medium">17 / 20 lá</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 85%;"></div>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-1">
+<div class="flex items-center gap-1.5 p-1.5 bg-surface rounded">
+<span class="material-symbols-outlined text-[16px] text-secondary">local_bar</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-secondary truncate">Đã uống cả bàn</span>
+<span class="font-code-inline text-code-inline font-semibold">16 ngụm</span>
+</div>
+</div>
+<div class="flex items-center gap-1.5 p-1.5 bg-surface rounded">
+<span class="material-symbols-outlined text-[16px] text-secondary">local_fire_department</span>
+<div class="flex flex-col min-w-0">
+<span class="font-label-sm text-label-sm text-secondary truncate">Trạng thái</span>
+<span class="font-label-sm text-label-sm text-error font-medium truncate">🔥 Cao trào</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+<script>
+  // Simple micro-interactions for emoji buttons and actions
+  document.querySelectorAll('.reaction-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const countEl = btn.querySelector('span:last-child');
+      if (countEl) {
+        let current = parseInt(countEl.textContent, 10) || 0;
+        countEl.textContent = current + 1;
+        btn.classList.add('bg-surface-container-high');
+      }
+    });
+  });
+
+  const completeBtn = document.getElementById('btn-complete');
+  if (completeBtn) {
+    completeBtn.addEventListener('click', () => {
+      completeBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">done_all</span><span>Đang chuyển lượt...</span>';
+      setTimeout(() => {
+        completeBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">check</span><span>Đã xong • Chuyển lượt</span>';
+      }, 1200);
+    });
+  }
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]" data-active-classes="bg-surface-container text-on-surface font-semibold"><div class="h-16 px-gutter flex items-center justify-around gap-space-xs"><a class="min-w-[64px] min-h-[44px] flex flex-col items-center justify-center py-1 px-space-xs rounded text-on-surface-variant transition-colors" data-path="ban-choi" href="#"><span class="material-symbols-outlined text-[20px]">table_restaurant</span><span class="font-label-sm text-label-sm tracking-tight mt-0.5">Bàn Chơi</span></a><a class="min-w-[64px] min-h-[44px] flex flex-col items-center justify-center py-1 px-space-xs rounded text-on-surface-variant transition-colors" data-path="lobby" href="#"><span class="material-symbols-outlined text-[20px]">grid_view</span><span class="font-label-sm text-label-sm tracking-tight mt-0.5">Lobby</span></a><a class="min-w-[64px] min-h-[44px] flex flex-col items-center justify-center py-1 px-space-xs rounded text-on-surface-variant transition-colors" data-path="bo-the" href="#"><span class="material-symbols-outlined text-[20px]">style</span><span class="font-label-sm text-label-sm tracking-tight mt-0.5">Bộ Thẻ</span></a><a class="min-w-[64px] min-h-[44px] flex flex-col items-center justify-center py-1 px-space-xs rounded text-on-surface-variant transition-colors" data-path="cai-dat" href="#"><span class="material-symbols-outlined text-[20px]">settings</span><span class="font-label-sm text-label-sm tracking-tight mt-0.5">Cài Đặt</span></a></div></nav></body></html>
