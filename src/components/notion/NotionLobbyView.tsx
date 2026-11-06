@@ -5,11 +5,13 @@ import { QuestionHistoryModal } from "./QuestionHistoryModal";
 import { Player } from "@/types/game";
 import { sounds } from "@/utils/soundEffects";
 import { DynamicQRCode } from "./DynamicQRCode";
+import { OnlineUser } from "@/lib/roomService";
 
 interface NotionLobbyViewProps {
   roomCode?: string;
   totalCards?: number;
   players?: Player[];
+  onlineUsers?: OnlineUser[];
   isHost?: boolean;
   onTotalCardsChange?: (count: number) => void;
   onStartGame?: () => void;
@@ -22,6 +24,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
   roomCode = "ALCH88",
   totalCards = 100,
   players,
+  onlineUsers = [],
   isHost = true,
   onTotalCardsChange,
   onStartGame,
@@ -99,6 +102,17 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
     if (confirm(`Bạn có chắc muốn rời bàn nhậu ${roomCode}?`)) {
       triggerToast("Đã rời phòng chơi.");
       if (onLeaveRoom) onLeaveRoom();
+    }
+  };
+
+  const handleInviteOnlineUser = (user: OnlineUser) => {
+    sounds.playSuccessChime();
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(inviteLink).then(() => {
+        triggerToast(`🎉 Đã sao chép link mời bàn #${roomCode} để gửi cho ${user.name}!`);
+      });
+    } else {
+      triggerToast(`Mã phòng: ${roomCode}`);
     }
   };
 
@@ -381,6 +395,45 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Bạn Nhậu Đang Online Sẵn Sàng Nhập Tiệc */}
+      {onlineUsers.length > 0 && (
+        <div className="bg-surface-container-lowest p-space-sm rounded-xl border border-surface-container-high space-y-2 shadow-xs">
+          <div className="flex items-center justify-between px-1">
+            <span className="font-label-md text-xs font-bold text-on-surface flex items-center gap-1.5 uppercase tracking-wide">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Bạn Nhậu Đang Online ({onlineUsers.length})</span>
+            </span>
+            <span className="text-[11px] text-secondary">Bấm để gửi link mời</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {onlineUsers.map((u) => (
+              <button
+                key={u.uid}
+                type="button"
+                onClick={() => handleInviteOnlineUser(u)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container border border-surface-container-high shrink-0 text-left active:scale-95 transition-transform"
+              >
+                <div className="w-6 h-6 rounded-full bg-surface-container-highest overflow-hidden text-[10px] font-bold flex items-center justify-center shrink-0">
+                  {u.avatar ? (
+                    <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                  ) : (
+                    u.name.charAt(0)
+                  )}
+                </div>
+                <div className="min-w-0 max-w-[90px]">
+                  <span className="font-body-sm text-xs font-semibold text-on-surface truncate block">
+                    {u.name}
+                  </span>
+                  <span className="text-[10px] text-primary font-medium block">
+                    + Mời vào bàn
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Notion Activity Callout */}
       <div className="p-space-sm rounded-lg bg-surface-container flex items-center justify-between text-on-surface-variant">

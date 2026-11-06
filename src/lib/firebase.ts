@@ -148,3 +148,54 @@ export async function logoutFirebase(): Promise<void> {
   if (!isFirebaseConfigured) return;
   await signOut(auth);
 }
+
+/**
+ * Persistent Auth listener: restores user session automatically on F5 / page reload
+ */
+export function onAuthUserChanged(
+  callback: (user: { name: string; email: string; avatar: string; uid: string } | null) => void
+): () => void {
+  // Check localStorage first for instant rendering
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem("drinklab_user_session");
+      if (saved) {
+        callback(JSON.parse(saved));
+      }
+    } catch {}
+  }
+
+  if (!isFirebaseConfigured || !auth) {
+    return () => {};
+  }
+
+  const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    if (firebaseUser) {
+      const cleanUser = {
+        name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Bạn Nhậu",
+        email: firebaseUser.email || "",
+        avatar:
+          firebaseUser.photoURL ||
+          `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
+            firebaseUser.displayName || firebaseUser.email || "User"
+          )}`,
+        uid: firebaseUser.uid,
+      };
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("drinklab_user_session", JSON.stringify(cleanUser));
+        } catch {}
+      }
+      callback(cleanUser);
+    } else {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem("drinklab_user_session");
+        } catch {}
+      }
+      callback(null);
+    }
+  });
+
+  return unsubscribe;
+}

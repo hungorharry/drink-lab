@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { sounds } from "@/utils/soundEffects";
 import { loginWithGoogle, loginOrRegisterWithEmail, logoutFirebase, isFirebaseConfigured } from "@/lib/firebase";
+import { OnlineUser, RoomState } from "@/lib/roomService";
 
 export interface GoogleUser {
   name: string;
@@ -14,6 +15,9 @@ export interface GoogleUser {
 interface NotionAuthViewProps {
   initialRoomCode?: string;
   isInvited?: boolean;
+  currentUser?: GoogleUser | null;
+  onlineUsers?: OnlineUser[];
+  activeRooms?: RoomState[];
   onJoinRoom?: (roomCode: string, playerName: string, tolerance: string, user: GoogleUser) => void;
   onCreateRoom?: (user: GoogleUser) => void;
 }
@@ -21,11 +25,14 @@ interface NotionAuthViewProps {
 export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
   initialRoomCode = "",
   isInvited = false,
+  currentUser = null,
+  onlineUsers = [],
+  activeRooms = [],
   onJoinRoom,
   onCreateRoom,
 }) => {
-  // Mặc định chưa đăng nhập để hiển thị giao diện yêu cầu đăng nhập rõ ràng, chỉn chu
-  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(null);
+  // Tự động khôi phục danh tính người chơi nếu đã đăng nhập trước đó (F5 không mất)
+  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(currentUser);
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState<boolean>(false);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState<boolean>(false);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
@@ -35,11 +42,21 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
   const [emailInput, setEmailInput] = useState<string>("");
   const [passwordInput, setPasswordInput] = useState<string>("");
 
-  const [playerName, setPlayerName] = useState<string>("");
+  const [playerName, setPlayerName] = useState<string>(currentUser?.name || "");
   const [tolerance, setTolerance] = useState<string>("toi-ben");
   const [roomCode, setRoomCode] = useState<string>(initialRoomCode || "");
   const [toastMessage, setToastMessage] = useState<string>("");
   const [showToast, setShowToast] = useState<boolean>(false);
+
+  // Đồng bộ khi currentUser được load từ auth / localStorage
+  useEffect(() => {
+    if (currentUser) {
+      setGoogleUser(currentUser);
+      if (!playerName) {
+        setPlayerName(currentUser.name);
+      }
+    }
+  }, [currentUser]);
 
   // Sync if initialRoomCode changes from URL
   React.useEffect(() => {
@@ -701,6 +718,133 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
             Tối đa 12 người
           </span>
         </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* KHỐI 4: PHÒNG NHẬU ĐANG MỞ (DISCOVERY 1-CHẠM THAM GIA)                     */}
+      {/* ========================================================================= */}
+      <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-high space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-on-surface">
+            <span className="material-symbols-outlined text-[18px] text-amber-600">
+              sports_bar
+            </span>
+            <span className="font-label-md font-semibold tracking-tight uppercase">
+              Phòng Nhậu Đang Mở
+            </span>
+          </div>
+          <span className="font-code-inline text-[11px] text-secondary bg-surface-container px-2 py-0.5 rounded">
+            {activeRooms.length} bàn đang mở
+          </span>
+        </div>
+
+        {activeRooms.length === 0 ? (
+          <div className="p-3 rounded-lg bg-surface-container-low text-center text-secondary font-body-sm">
+            <span className="text-xl block mb-1">🛋️</span>
+            <span>Chưa có bàn nào đang mở. Hãy bấm &quot;Tạo Bàn Mới&quot; để mở tiệc đầu tiên!</span>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {activeRooms.map((room) => (
+              <div
+                key={room.code}
+                className="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container border border-surface-container-high transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-900 font-bold flex items-center justify-center shrink-0">
+                    🍺
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-code-inline font-bold text-on-surface text-sm">
+                        {room.code}
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-surface-container-highest text-secondary">
+                        {room.status === "playing" ? "Đang chơi 🔥" : "Phòng chờ ⏳"}
+                      </span>
+                    </div>
+                    <span className="text-xs text-secondary truncate block">
+                      Host: {room.hostName || "Chủ Xị"} • {room.players?.length || 1}/8 người
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    sounds.playBeerClink();
+                    if (!googleUser) {
+                      setRoomCode(room.code);
+                      triggerToast("🔒 Vui lòng đăng nhập để vào bàn này!");
+                      setIsGoogleModalOpen(true);
+                      return;
+                    }
+                    const name = playerName.trim() || googleUser.name;
+                    if (onJoinRoom) {
+                      onJoinRoom(room.code, name, tolerance, googleUser);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:bg-neutral-800 active:scale-95 transition-transform shrink-0 flex items-center gap-1"
+                >
+                  <span>Vào Bàn</span>
+                  <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* KHỐI 5: BẠN NHẬU ĐANG ONLINE                                              */}
+      {/* ========================================================================= */}
+      <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-high space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-on-surface">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="font-label-md font-semibold tracking-tight uppercase">
+              Bạn Nhậu Đang Online
+            </span>
+          </div>
+          <span className="font-code-inline text-[11px] text-secondary bg-surface-container px-2 py-0.5 rounded">
+            {onlineUsers.length} người trực tuyến
+          </span>
+        </div>
+
+        {onlineUsers.length === 0 ? (
+          <div className="p-3 rounded-lg bg-surface-container-low text-center text-secondary font-body-sm">
+            <span className="text-xl block mb-1">👋</span>
+            <span>Các chiến hữu đang chuẩn bị mồi nhậu. Hãy tạo bàn rồi gửi mã mời nhé!</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {onlineUsers.slice(0, 8).map((u) => (
+              <div
+                key={u.uid}
+                className="flex items-center gap-2 p-2 rounded-lg bg-surface-container-low border border-surface-container-high overflow-hidden"
+              >
+                <div className="relative shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-surface-container-highest overflow-hidden flex items-center justify-center font-bold text-xs">
+                    {u.avatar ? (
+                      <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                    ) : (
+                      u.name.charAt(0)
+                    )}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white"></span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="font-body-sm text-xs font-semibold text-on-surface truncate block">
+                    {u.name}
+                  </span>
+                  <span className="text-[10px] text-secondary truncate block">
+                    {u.currentRoomCode ? `Bàn #${u.currentRoomCode}` : "Đang rảnh 🍻"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}

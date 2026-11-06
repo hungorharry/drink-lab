@@ -4,6 +4,7 @@ import {
   setDoc,
   updateDoc,
   onSnapshot,
+  collection,
   Unsubscribe,
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/lib/firebase";
@@ -293,5 +294,127 @@ export async function updateRoom(
     } catch (e) {
       console.warn("Firestore updateDoc error:", e);
     }
+  }
+}
+
+
+export interface OnlineUser {
+  uid: string;
+  name: string;
+  email: string;
+  avatar: string;
+  lastActive: number;
+  currentRoomCode?: string | null;
+}
+
+/**
+ * Updates current user's online presence in Firestore
+ */
+export async function updatePresence(
+  user: { uid?: string; name: string; email: string; avatar?: string },
+  currentRoomCode?: string | null
+): Promise<void> {
+  const uid = user?.uid || (user?.email ? user.email.replace(/[^a-zA-Z0-9]/g, "_") : "");
+  if (!isFirebaseConfigured || !db || !uid) return;
+  try {
+    const userRef = doc(db, "online_users", uid);
+    await setDoc(
+      userRef,
+      {
+        uid: uid,
+        name: user.name || "Bạn Nhậu",
+        email: user.email || "",
+        avatar: user.avatar || "",
+        lastActive: Date.now(),
+        currentRoomCode: currentRoomCode || null,
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn("Presence update error:", err);
+  }
+}
+
+/**
+ * Listens to active users currently online in DrinkLab
+ */
+export function subscribeToOnlineUsers(
+  callback: (users: OnlineUser[]) => void
+): Unsubscribe {
+  if (!isFirebaseConfigured || !db) {
+    callback([]);
+    return () => {};
+  }
+
+  try {
+    const usersCol = collection(db, "online_users");
+    const unsubscribe = onSnapshot(
+      usersCol,
+      (snap) => {
+        const now = Date.now();
+        const activeUsers: OnlineUser[] = [];
+        snap.forEach((docSnap) => {
+          const data = docSnap.data() as OnlineUser;
+          // Người dùng online trong vòng 10 phút
+          if (data && data.lastActive && now - data.lastActive < 10 * 60 * 1000) {
+            activeUsers.push(data);
+          }
+        });
+        callback(activeUsers);
+      },
+      (err) => {
+        console.warn("Online users snapshot error:", err);
+      }
+    );
+    return unsubscribe;
+  } catch (e) {
+    console.warn("Subscribe online users error:", e);
+    return () => {};
+  }
+}
+
+/**
+ * Listens to all active rooms in DrinkLab (so players can discover and join)
+ */
+export function subscribeToActiveRooms(
+  callback: (rooms: RoomState[]) => void
+): Unsubscribe {
+  if (!isFirebaseConfigured || !db) {
+    callback([]);
+    return () => {};
+  }
+
+  try {
+    const roomsCol = collection(db, "rooms");
+    const unsubscribe = onSnapshot(
+      roomsCol,
+      (snap) => {
+        const now = Date.now();
+        const activeList: RoomState[] = [];
+        snap.forEach((docSnap) => {
+          const data = docSnap.data() as RoomState;
+          if (
+            data &&
+            data.code &&
+            data.status !== "summary" &&
+            data.players &&
+            data.players.length > 0 &&
+            (!data.updatedAt || now - data.updatedAt < 6 * 60 * 60 * 1000) // phòng trong vòng 6 tiếng
+          ) {
+            activeList.push(data);
+          }
+        });
+        // Sắp xếp phòng mới nhất lên đầu
+        activeList.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        callback(activeList);
+      },
+      (err) => {
+        console.warn("Active rooms snapshot error:", err);
+      }
+    );
+    return unsubscribe;
+  } catch (e) {
+    console.warn("Subscribe active rooms error:", e);
+    return () => {};
   }
 }

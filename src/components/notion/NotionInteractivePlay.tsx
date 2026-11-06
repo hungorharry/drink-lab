@@ -39,6 +39,7 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
   const [showToast, setShowToast] = useState<boolean>(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [readCountdown, setReadCountdown] = useState<number>(0);
+  const [endGameCountdown, setEndGameCountdown] = useState<number>(20);
   const [floatingEmojis, setFloatingEmojis] = useState<
     { id: number; emoji: string; left: number }[]
   >([]);
@@ -125,6 +126,37 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       setReadCountdown(0);
     }
   }, [isFlipped, cardIndex]);
+
+  // Đếm ngược 20 giây tự động kết thúc ván nếu không ai phản hồi từ chối
+  useEffect(() => {
+    if (!endGameRequest?.requestedAt) {
+      setEndGameCountdown(20);
+      return;
+    }
+
+    const checkTimeout = () => {
+      const elapsed = Math.floor((Date.now() - endGameRequest.requestedAt) / 1000);
+      const remaining = Math.max(0, 20 - elapsed);
+      setEndGameCountdown(remaining);
+
+      if (remaining <= 0) {
+        const myId = currentUser?.uid || currentUser?.email || currentUser?.name;
+        if (isHost || (myId && myId === endGameRequest.approvals[0])) {
+          sounds.playSuccessChime();
+          updateRoom(roomCode, {
+            status: "summary",
+            endGameRequest: null,
+            updatedAt: Date.now(),
+          });
+          if (onFinishGame) onFinishGame();
+        }
+      }
+    };
+
+    checkTimeout();
+    const interval = setInterval(checkTimeout, 1000);
+    return () => clearInterval(interval);
+  }, [endGameRequest, roomCode, currentUser, isHost, onFinishGame]);
 
   // Lắng nghe reactions thời gian thực từ Firestore để bắn emoji trên mọi máy
   useEffect(() => {
@@ -282,13 +314,28 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
     triggerToast(`Đã ghi nhận! Chuyển lượt sang ${nextPlayerName} 🍻`);
   };
 
-  // 4. Cơ chế Kết Thúc Ván: Cần tất cả người chơi cùng xác nhận
+  // 4. Cơ chế Kết Thúc Ván: Solo kết thúc ngay, Multiplayer đếm ngược 20s
   const handleRequestEndGame = async () => {
     if (!currentUser) return;
+
+    // Nếu chơi một mình (Solo): Bấm kết thúc thì mặc định kết thúc luôn!
+    if (players.length <= 1) {
+      triggerHaptic("medium");
+      sounds.playSuccessChime();
+      triggerToast("🎉 Đã kết thúc ván chơi! Đang mở Bảng Phong Thần...");
+      await updateRoom(roomCode, {
+        status: "summary",
+        endGameRequest: null,
+        updatedAt: Date.now(),
+      });
+      if (onFinishGame) onFinishGame();
+      return;
+    }
+
     const myId = currentUser.uid || currentUser.email || currentUser.name;
     triggerHaptic("medium");
     sounds.playBeerClink();
-    triggerToast("📢 Đã gửi yêu cầu kết thúc ván đấu! Đang chờ cả bàn cùng xác nhận...");
+    triggerToast("📢 Đã gửi yêu cầu kết thúc! Tự động kết thúc sau 20s nếu không ai từ chối...");
 
     await updateRoom(roomCode, {
       endGameRequest: {
@@ -389,7 +436,7 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
         ))}
       </div>
 
-      {/* POPUP XÁC NHẬN KẾT THÚC VÁN (TẤT CẢ MỌI NGƯỜI CÙNG XÁC NHẬN) */}
+      {/* POPUP XÁC NHẬN KẾT THÚC VÁN (20s TỰ ĐỘNG KẾT THÚC HOẶC TẤT CẢ XÁC NHẬN) */}
       {endGameRequest && (
         <div className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/60 shadow-lg space-y-2 animate-fadeIn">
           <div className="flex items-center justify-between">
@@ -398,11 +445,11 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
               <span>Yêu Cầu Kết Thúc Bàn Nhậu</span>
             </span>
             <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-code-inline text-xs font-bold">
-              {endGameRequest.approvals.length}/{players.length} Đồng Ý
+              ⏳ Tự kết thúc sau {endGameCountdown}s
             </span>
           </div>
           <p className="font-body-sm text-xs text-on-surface leading-snug">
-            <strong>{endGameRequest.requesterName}</strong> muốn kết thúc ván đấu và chuyển sang Bảng Phong Thần. Cần <strong>tất cả người chơi</strong> cùng xác nhận để kết thúc!
+            <strong>{endGameRequest.requesterName}</strong> muốn kết thúc ván ({endGameRequest.approvals.length}/{players.length} đồng ý). Nếu không ai bấm &quot;Tiếp Tục Chơi&quot;, ván sẽ <strong>tự động kết thúc sau {endGameCountdown}s</strong>!
           </p>
 
           <div className="flex items-center gap-2 pt-1">
@@ -421,13 +468,22 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
                   onClick={handleRejectEndGame}
                   className="py-2 px-3 rounded-xl bg-surface-container-high text-on-surface font-label-md text-xs font-medium hover:bg-surface-container-highest transition-colors active:scale-95"
                 >
-                  Chơi Tiếp 🍺
+                  Tiếp Tục Chơi 🍺
                 </button>
               </>
             ) : (
-              <div className="w-full py-2 px-3 rounded-xl bg-surface-container text-secondary text-xs text-center font-medium flex items-center justify-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
-                <span>Bạn đã đồng ý. Đang chờ {Math.max(0, players.length - endGameRequest.approvals.length)} người còn lại...</span>
+              <div className="flex-1 flex items-center justify-between bg-surface-container px-3 py-2 rounded-xl">
+                <span className="text-secondary text-xs font-medium flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
+                  <span>Đã đồng ý (Tự kết thúc sau {endGameCountdown}s)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRejectEndGame}
+                  className="text-xs text-error font-medium hover:underline ml-2"
+                >
+                  Hủy yêu cầu
+                </button>
               </div>
             )}
           </div>

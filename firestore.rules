@@ -35,6 +35,19 @@ service cloud.firestore {
     //   - votes: map (optional, player votes map, size <= 100)
     //   - endGameRequest: map (optional, all-player consensus request)
     //
+    // ---------------------------------------------------------------
+    //
+    // Collection: online_users
+    // Document ID: {uid} (string, 1-128 characters, matching user ID)
+    //
+    // Fields:
+    //   - uid: string (required, 1-128 chars, matches document ID, immutable)
+    //   - name: string (optional, up to 100 chars)
+    //   - email: string (optional, up to 100 chars)
+    //   - avatar: string (optional, up to 500 chars)
+    //   - lastActive: number or timestamp (optional, presence heartbeat)
+    //   - currentRoomCode: string (optional, up to 32 chars)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -77,6 +90,31 @@ service cloud.firestore {
          ('uid' in resource.data.players[0]) &&
          resource.data.players[0].uid == request.auth.uid)
       );
+    }
+
+    // ===============================================================
+    // Domain Validator: Online User Presence
+    // ===============================================================
+
+    function isValidOnlineUser(data, uid) {
+      return hasRequiredFields(data, ['uid']) &&
+        hasOnlyAllowedFields(data, [
+          'uid',
+          'name',
+          'email',
+          'avatar',
+          'lastActive',
+          'currentRoomCode'
+        ]) &&
+        data.uid is string &&
+        data.uid == uid &&
+        data.uid.size() > 0 &&
+        data.uid.size() <= 128 &&
+        (!('name' in data) || data.name == null || (data.name is string && data.name.size() <= 100)) &&
+        (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 100)) &&
+        (!('avatar' in data) || data.avatar == null || (data.avatar is string && data.avatar.size() <= 500)) &&
+        (!('lastActive' in data) || data.lastActive == null || data.lastActive is number || data.lastActive is timestamp) &&
+        (!('currentRoomCode' in data) || data.currentRoomCode == null || (data.currentRoomCode is string && data.currentRoomCode.size() <= 32));
     }
 
     // ===============================================================
@@ -144,8 +182,9 @@ service cloud.firestore {
     // ===============================================================
 
     match /rooms/{roomCode} {
-      // Allow read (get/listen) for guests and authenticated players using the room code
-      allow read: if isValidRoomCode(roomCode);
+      // Allow read (both get and list) for guests and authenticated players
+      // so players can discover and list active public rooms on the lobby screen
+      allow read: if true;
 
       // Allow room creation with schema and data validation
       allow create: if isValidRoomCode(roomCode) &&
@@ -158,6 +197,24 @@ service cloud.firestore {
 
       // Restrict room deletion to the authenticated host only
       allow delete: if isRoomHost();
+    }
+
+    // ===============================================================
+    // Rules: Online Users Collection
+    // ===============================================================
+
+    match /online_users/{uid} {
+      // Allow read for all users (to discover online players and invite them)
+      allow read: if true;
+
+      // Allow create and update if document data has valid fields
+      allow create: if isValidOnlineUser(request.resource.data, uid);
+
+      allow update: if isValidOnlineUser(request.resource.data, uid) &&
+                       request.resource.data.uid == resource.data.uid;
+
+      // Allow delete if authenticated user owns the document
+      allow delete: if isAuthenticated() && request.auth.uid == uid;
     }
 
     // ===============================================================
