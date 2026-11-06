@@ -1,6 +1,6 @@
 export interface DrinkingCard {
   id: string;
-  type: "DARE" | "TRUTH" | "ALL_DRINK" | "KING";
+  type: "DARE" | "TRUTH" | "ALL_DRINK" | "KING" | "POLL";
   typeLabel: string;
   title: string;
   description: string;
@@ -16,6 +16,25 @@ export interface Player {
   initial: string;
   isHost: boolean;
   color: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface CardHistoryItem {
+  id: string;
+  turnNumber: number;
+  playerId: number;
+  playerName: string;
+  playerInitial: string;
+  cardTitle: string;
+  cardContent: string;
+  cardType: string;
+  cardTypeLabel: string;
+  penalty: string;
+  result: "drank" | "passed" | "rerolled";
+  resultText: string;
+  sips: number;
+  timestamp: string;
 }
 
 export interface HelpRequest {
@@ -41,10 +60,12 @@ export interface GameState {
   currentCard: DrinkingCard;
   cardDeckIndex: number;
   round: number;
+  totalCards: number;
   lastUpdated: number;
   helpRequest?: HelpRequest | null;
   usedHelpByUser: Record<number, boolean>;
-  verificationRequest?: DrinkVerificationRequest | null; // 1 người ngẫu nhiên xác nhận đã uống xong
-  penaltyBannerMessage?: string | null; // Báo động đổi lá bài bắt uống phạt
+  verificationRequest?: DrinkVerificationRequest | null;
+  penaltyBannerMessage?: string | null;
   lastActionMessage?: string | null;
+  history?: CardHistoryItem[];
 }
