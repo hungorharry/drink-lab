@@ -3,6 +3,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   collection,
   Unsubscribe,
@@ -305,6 +306,12 @@ export interface OnlineUser {
   avatar: string;
   lastActive: number;
   currentRoomCode?: string | null;
+  incomingInvite?: {
+    roomCode: string;
+    fromName: string;
+    fromAvatar?: string;
+    timestamp: number;
+  } | null;
 }
 
 /**
@@ -332,6 +339,81 @@ export async function updatePresence(
     );
   } catch (err) {
     console.warn("Presence update error:", err);
+  }
+}
+
+/**
+ * Sends a real-time invitation to an online user
+ */
+export async function sendRoomInvite(
+  targetUid: string,
+  invite: { roomCode: string; fromName: string; fromAvatar?: string }
+): Promise<void> {
+  if (!isFirebaseConfigured || !db || !targetUid) return;
+  try {
+    const userRef = doc(db, "online_users", targetUid);
+    await setDoc(
+      userRef,
+      {
+        incomingInvite: {
+          ...invite,
+          timestamp: Date.now(),
+        },
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn("Send room invite error:", err);
+  }
+}
+
+/**
+ * Clears an incoming invitation for the current user
+ */
+export async function clearRoomInvite(myUid: string): Promise<void> {
+  if (!isFirebaseConfigured || !db || !myUid) return;
+  try {
+    const userRef = doc(db, "online_users", myUid);
+    await setDoc(
+      userRef,
+      {
+        incomingInvite: null,
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn("Clear room invite error:", err);
+  }
+}
+
+/**
+ * Subscribes to changes on the current user's document (for listening to real-time incoming invites)
+ */
+export function subscribeToUserDoc(
+  uid: string,
+  callback: (user: OnlineUser | null) => void
+): Unsubscribe {
+  if (!isFirebaseConfigured || !db || !uid) {
+    return () => {};
+  }
+  try {
+    const userRef = doc(db, "online_users", uid);
+    return onSnapshot(
+      userRef,
+      (snap) => {
+        if (snap.exists()) {
+          callback(snap.data() as OnlineUser);
+        } else {
+          callback(null);
+        }
+      },
+      (err) => {
+        console.warn("User doc listener error:", err);
+      }
+    );
+  } catch (e) {
+    console.warn("User doc subscription error:", e);
+    return () => {};
   }
 }
 
@@ -374,7 +456,8 @@ export function subscribeToOnlineUsers(
 }
 
 /**
- * Listens to all active rooms in DrinkLab (so players can discover and join)
+ * Listens to all active rooms in DrinkLab (so players can discover and join).
+ * Tự động xóa các phòng không ai kích hoạt hoặc không hoạt động quá 5 phút.
  */
 export function subscribeToActiveRooms(
   callback: (rooms: RoomState[]) => void
@@ -391,17 +474,24 @@ export function subscribeToActiveRooms(
       (snap) => {
         const now = Date.now();
         const activeList: RoomState[] = [];
+        const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
         snap.forEach((docSnap) => {
           const data = docSnap.data() as RoomState;
-          if (
-            data &&
-            data.code &&
-            data.status !== "summary" &&
-            data.players &&
-            data.players.length > 0 &&
-            (!data.updatedAt || now - data.updatedAt < 6 * 60 * 60 * 1000) // phòng trong vòng 6 tiếng
-          ) {
-            activeList.push(data);
+          if (data && data.code) {
+            const updatedAt = data.updatedAt || 0;
+            const isExpired = now - updatedAt > FIVE_MINUTES_MS;
+
+            if (isExpired) {
+              // Phòng không kích hoạt chơi hoặc không ai tương tác trong 5 phút -> Tự động xóa dọn dẹp Firestore
+              deleteDoc(doc(db, "rooms", data.code)).catch(() => {});
+            } else if (
+              data.status !== "summary" &&
+              data.players &&
+              data.players.length > 0
+            ) {
+              activeList.push(data);
+            }
           }
         });
         // Sắp xếp phòng mới nhất lên đầu

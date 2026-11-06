@@ -9,6 +9,7 @@ import { NotionShareView } from "@/components/notion/NotionShareView";
 import { NotionLobbyView } from "@/components/notion/NotionLobbyView";
 import { NotionInteractivePlay } from "@/components/notion/NotionInteractivePlay";
 import { onAuthUserChanged } from "@/lib/firebase";
+import { sounds } from "@/utils/soundEffects";
 import {
   createRoom,
   joinRoom,
@@ -20,6 +21,8 @@ import {
   updatePresence,
   subscribeToOnlineUsers,
   subscribeToActiveRooms,
+  subscribeToUserDoc,
+  clearRoomInvite,
 } from "@/lib/roomService";
 
 export default function Home() {
@@ -32,6 +35,12 @@ export default function Home() {
   const [roomData, setRoomData] = useState<RoomState | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [activeRooms, setActiveRooms] = useState<RoomState[]>([]);
+  const [incomingInvite, setIncomingInvite] = useState<{
+    roomCode: string;
+    fromName: string;
+    fromAvatar?: string;
+    timestamp: number;
+  } | null>(null);
 
   // 1. Phục hồi Session đăng nhập tự động khi F5 / mở lại trang (Không cần đăng nhập lại)
   useEffect(() => {
@@ -70,7 +79,7 @@ export default function Home() {
     };
   }, []);
 
-  // 2. Lắng nghe Danh Sách Người Dùng Online & Các Phòng Chơi Đang Mở
+  // 2. Lắng nghe Danh Sách Người Dùng Online & Các Phòng Chơi Đang Mở (Tự dọn dẹp phòng > 5 phút)
   useEffect(() => {
     const unsubOnline = subscribeToOnlineUsers((users) => {
       setOnlineUsers(users);
@@ -98,7 +107,28 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [currentUser, roomCode]);
 
-  // 4. Kiểm tra URL query param khi người khác bấm vào link mời (?room=XYZ hoặc ?join=XYZ)
+  // 4. Lắng nghe Lời Mời Trực Tiếp từ bạn bè (In-app realtime invite)
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+
+    const unsubUser = subscribeToUserDoc(currentUser.uid, (userDoc) => {
+      if (userDoc?.incomingInvite) {
+        const invite = userDoc.incomingInvite;
+        const elapsed = Date.now() - (invite.timestamp || 0);
+        // Lời mời trong vòng 60 giây và khác phòng hiện tại
+        if (elapsed < 60000 && invite.roomCode !== roomCode) {
+          setIncomingInvite(invite);
+          sounds.playBeerClink();
+        }
+      }
+    });
+
+    return () => {
+      unsubUser();
+    };
+  }, [currentUser?.uid, roomCode]);
+
+  // 5. Kiểm tra URL query param khi người khác bấm vào link mời (?room=XYZ hoặc ?join=XYZ)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -107,12 +137,11 @@ export default function Home() {
         const cleanCode = invitedCode.toUpperCase().trim();
         setRoomCode(cleanCode);
         setIsInvited(true);
-        setCurrentScreen("auth");
       }
     }
   }, []);
 
-  // 5. Real-time listener phòng chơi qua Cloud Firestore (onSnapshot)
+  // 6. Real-time listener phòng chơi qua Cloud Firestore (onSnapshot)
   useEffect(() => {
     if (!roomCode) return;
 
@@ -153,14 +182,25 @@ export default function Home() {
     };
   }, [roomCode, currentScreen, currentUser?.email]);
 
-  // 6. Kiểm soát truy cập: Bàn chơi (spectator) KHÔNG được xuất hiện khi chưa bắt đầu ván đấu
+  // 7. Host Room Keep-Alive: Cập nhật updatedAt định kỳ để không bị xóa khi ngồi trong phòng chờ
+  useEffect(() => {
+    if (!roomCode || !isHost || !roomData) return;
+
+    const keepAliveInterval = setInterval(() => {
+      updateRoom(roomCode, { updatedAt: Date.now() });
+    }, 90000); // 1.5 phút cập nhật 1 lần
+
+    return () => clearInterval(keepAliveInterval);
+  }, [roomCode, isHost, roomData]);
+
+  // 8. Kiểm soát truy cập: Bàn chơi (spectator) KHÔNG được xuất hiện khi chưa bắt đầu ván đấu
   useEffect(() => {
     if (currentScreen === "spectator" && roomData && roomData.status !== "playing") {
       setCurrentScreen("lobby");
     }
   }, [currentScreen, roomData]);
 
-  // 7. Xử lý Tạo Phòng Mới (Chủ Xị / Host lưu trực tiếp vào Cloud Firestore)
+  // 9. Xử lý Tạo Phòng Mới (Chủ Xị / Host lưu trực tiếp vào Cloud Firestore)
   const handleCreateRoom = async (user: GoogleUser) => {
     try {
       const { roomCode: newCode, room } = await createRoom(user, totalCards);
@@ -183,7 +223,7 @@ export default function Home() {
     }
   };
 
-  // 8. Xử lý Tham Gia Phòng (Guest hoặc Bạn Bè lưu vào Cloud Firestore)
+  // 10. Xử lý Tham Gia Phòng (Guest hoặc Bạn Bè lưu vào Cloud Firestore)
   const handleJoinRoom = async (code: string, nickname: string, tolerance: string, user: GoogleUser) => {
     const cleanCode = (code || roomCode).toUpperCase().trim();
     if (!cleanCode) return;
@@ -216,7 +256,35 @@ export default function Home() {
     setCurrentScreen("lobby");
   };
 
-  // 9. Rời phòng
+  // 11. Xử lý Chấp Nhận / Từ Chối Lời Mời
+  const handleAcceptInvite = async (targetCode: string) => {
+    sounds.playBeerClink();
+    if (currentUser?.uid) {
+      await clearRoomInvite(currentUser.uid);
+    }
+    setIncomingInvite(null);
+    setIsInvited(false);
+
+    if (!currentUser) {
+      setRoomCode(targetCode);
+      setCurrentScreen("auth");
+      return;
+    }
+
+    // Tự động vào thẳng phòng và hiển thị trong danh sách người chơi của host ngay lập tức!
+    await handleJoinRoom(targetCode, currentUser.name, "toi-ben", currentUser);
+  };
+
+  const handleDeclineInvite = async () => {
+    sounds.playCardFlip();
+    if (currentUser?.uid) {
+      await clearRoomInvite(currentUser.uid);
+    }
+    setIncomingInvite(null);
+    setIsInvited(false);
+  };
+
+  // 12. Rời phòng
   const handleLeaveRoom = () => {
     if (typeof window !== "undefined") {
       try {
@@ -231,26 +299,26 @@ export default function Home() {
     setCurrentScreen("auth");
   };
 
-  // 10. Thay đổi tổng số câu hỏi (Host Only)
+  // 13. Thay đổi tổng số câu hỏi (Host Only)
   const handleChangeTotalCards = async (count: number) => {
     setTotalCards(count);
     const newDeck = getShuffledDeck(count);
     await updateRoom(roomCode, { totalCards: count, deck: newDeck });
   };
 
-  // 11. Bắt đầu ván chơi
+  // 14. Bắt đầu ván chơi
   const handleStartGame = async () => {
     await updateRoom(roomCode, { status: "playing" });
     setCurrentScreen("spectator");
   };
 
-  // 12. Kết thúc ván
+  // 15. Kết thúc ván
   const handleFinishGame = async () => {
     await updateRoom(roomCode, { status: "summary" });
     setCurrentScreen("summary");
   };
 
-  // 13. Chơi lại
+  // 16. Chơi lại
   const handleReplayGame = async () => {
     const newDeck = getShuffledDeck(totalCards);
     await updateRoom(roomCode, {
@@ -269,6 +337,9 @@ export default function Home() {
     currentScreen === "auth"
       ? "Sẵn sàng"
       : `${roomData?.players?.length || 0}/8`;
+
+  const activeInviteCode = incomingInvite ? incomingInvite.roomCode : (isInvited ? roomCode : "");
+  const showInviteModal = Boolean(incomingInvite || (isInvited && roomCode && roomCode !== roomData?.code));
 
   return (
     <div className="bg-surface text-on-surface font-body-md text-body-md antialiased min-h-screen min-h-[100dvh] flex flex-col w-full max-w-[440px] mx-auto shadow-sm relative overflow-x-hidden">
@@ -306,6 +377,7 @@ export default function Home() {
             totalCards={totalCards}
             players={roomData?.players}
             onlineUsers={onlineUsers}
+            currentUser={currentUser}
             isHost={isHost}
             onTotalCardsChange={handleChangeTotalCards}
             onStartGame={handleStartGame}
@@ -350,6 +422,56 @@ export default function Home() {
           />
         )}
       </main>
+
+      {/* POPUP MODAL: LỜI MỜI VÀO PHÒNG TRỰC TIẾP TỪ BẠN BÈ HOẶC QUA LINK */}
+      {showInviteModal && activeInviteCode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-inverse-surface/60 backdrop-blur-xs animate-fadeIn">
+          <div
+            className="w-full max-w-[340px] rounded-2xl bg-surface-container-lowest p-5 shadow-2xl border-2 border-amber-500/60 space-y-4 text-center animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-300 text-white flex items-center justify-center text-3xl mx-auto shadow-md">
+              🍻
+            </div>
+
+            <div className="space-y-1">
+              <span className="font-label-sm font-bold tracking-wider uppercase text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full inline-block">
+                Lời Mời Vào Bàn Nhậu
+              </span>
+              <h3 className="font-headline-sm text-base font-bold text-on-surface">
+                {incomingInvite
+                  ? `${incomingInvite.fromName} Mời Bạn Vào Bàn!`
+                  : "Bạn Nhận Được Lời Mời Vào Bàn Nhậu!"}
+              </h3>
+              <p className="font-body-sm text-xs text-secondary leading-relaxed">
+                Chiến hữu đang đợi bạn tại Bàn{" "}
+                <strong className="text-on-surface font-code-inline font-bold text-sm">
+                  #{activeInviteCode}
+                </strong>
+                . Bấm đồng ý để nhập tiệc và tự động vào bàn ngay!
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleAcceptInvite(activeInviteCode)}
+                className="w-full py-3 px-4 rounded-xl bg-primary text-on-primary font-headline-sm text-sm font-bold flex items-center justify-center gap-2 shadow-md active:scale-95 transition-transform cursor-pointer"
+              >
+                <span>🍻 Đồng Ý Vào Bàn Ngay</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeclineInvite}
+                className="w-full py-2 px-3 rounded-lg text-secondary hover:text-on-surface font-label-md text-xs font-medium transition-colors cursor-pointer"
+              >
+                Để Sau / Từ Chối
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Fixed Notion Navigation (Ẩn hoàn toàn khi đang trong trận đấu thực chiến, chỉ hiện tab Bàn Chơi khi đang chơi) */}
       {currentScreen !== "spectator" && (

@@ -47,6 +47,7 @@ service cloud.firestore {
     //   - avatar: string (optional, up to 500 chars)
     //   - lastActive: number or timestamp (optional, presence heartbeat)
     //   - currentRoomCode: string (optional, up to 32 chars)
+    //   - incomingInvite: map or null (optional, size <= 10)
     //
     // ===============================================================
 
@@ -104,7 +105,8 @@ service cloud.firestore {
           'email',
           'avatar',
           'lastActive',
-          'currentRoomCode'
+          'currentRoomCode',
+          'incomingInvite'
         ]) &&
         data.uid is string &&
         data.uid == uid &&
@@ -114,7 +116,8 @@ service cloud.firestore {
         (!('email' in data) || data.email == null || (data.email is string && data.email.size() <= 100)) &&
         (!('avatar' in data) || data.avatar == null || (data.avatar is string && data.avatar.size() <= 500)) &&
         (!('lastActive' in data) || data.lastActive == null || data.lastActive is number || data.lastActive is timestamp) &&
-        (!('currentRoomCode' in data) || data.currentRoomCode == null || (data.currentRoomCode is string && data.currentRoomCode.size() <= 32));
+        (!('currentRoomCode' in data) || data.currentRoomCode == null || (data.currentRoomCode is string && data.currentRoomCode.size() <= 32)) &&
+        (!('incomingInvite' in data) || data.incomingInvite == null || (data.incomingInvite is map && data.incomingInvite.size() <= 10));
     }
 
     // ===============================================================
@@ -195,8 +198,12 @@ service cloud.firestore {
                        isValidRoom(request.resource.data, roomCode) &&
                        request.resource.data.code == resource.data.code;
 
-      // Restrict room deletion to the authenticated host only
-      allow delete: if isRoomHost();
+      // Allow room deletion by the host or if inactive for > 5 minutes (300,000 ms)
+      allow delete: if isRoomHost() || (
+        ('updatedAt' in resource.data) &&
+        (resource.data.updatedAt is number) &&
+        (request.time.toMillis() - resource.data.updatedAt > 300000)
+      );
     }
 
     // ===============================================================

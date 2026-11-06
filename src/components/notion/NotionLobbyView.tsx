@@ -5,13 +5,15 @@ import { QuestionHistoryModal } from "./QuestionHistoryModal";
 import { Player } from "@/types/game";
 import { sounds } from "@/utils/soundEffects";
 import { DynamicQRCode } from "./DynamicQRCode";
-import { OnlineUser } from "@/lib/roomService";
+import { OnlineUser, sendRoomInvite } from "@/lib/roomService";
+import { GoogleUser } from "./NotionAuthView";
 
 interface NotionLobbyViewProps {
   roomCode?: string;
   totalCards?: number;
   players?: Player[];
   onlineUsers?: OnlineUser[];
+  currentUser?: GoogleUser | null;
   isHost?: boolean;
   onTotalCardsChange?: (count: number) => void;
   onStartGame?: () => void;
@@ -25,6 +27,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
   totalCards = 100,
   players,
   onlineUsers = [],
+  currentUser = null,
   isHost = true,
   onTotalCardsChange,
   onStartGame,
@@ -105,14 +108,26 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
     }
   };
 
-  const handleInviteOnlineUser = (user: OnlineUser) => {
-    sounds.playSuccessChime();
+  const handleInviteOnlineUser = async (user: OnlineUser) => {
+    sounds.playBeerClink();
+
+    // Gửi popup trực tiếp tới màn hình thiết bị của người chơi
+    if (user.uid && currentUser) {
+      await sendRoomInvite(user.uid, {
+        roomCode,
+        fromName: currentUser.name || "Chủ Xị",
+        fromAvatar: currentUser.avatar,
+      });
+      triggerToast(`🚀 Đã gửi lời mời trực tiếp tới màn hình của ${user.name}!`);
+    } else {
+      triggerToast(`🎉 Đang chuẩn bị link mời cho ${user.name}...`);
+    }
+
+    // Đồng thời sao chép link phòng làm dự phòng
     if (navigator.clipboard) {
       navigator.clipboard.writeText(inviteLink).then(() => {
-        triggerToast(`🎉 Đã sao chép link mời bàn #${roomCode} để gửi cho ${user.name}!`);
+        // clipboard ready
       });
-    } else {
-      triggerToast(`Mã phòng: ${roomCode}`);
     }
   };
 
