@@ -483,16 +483,16 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
           </span>
         </div>
 
-        {/* 3D FLIP CARD ANIMATION CANVAS */}
-        <div className="card-3d-wrap my-1 select-none">
-          <div className={`card-3d-inner ${isFlipped ? "card-3d-flipped" : ""}`}>
-            {/* CARD FRONT: Mặt úp của lá bài (Card Back Design) */}
+        {/* CARD CANVAS: CHẠM ĐỂ BỐC HOẶC LẬT MỞ CÂU HỎI SIÊU NÉT (ZERO BLUR) */}
+        <div className="my-1 select-none">
+          {!isFlipped ? (
+            /* CARD FRONT: Mặt úp của lá bài (Card Back Design) */
             <div
-              onClick={isMyTurn && !isFlipped ? handleDrawCard : undefined}
-              className={`card-3d-face card-3d-front bg-gradient-to-br from-surface-container-low via-surface-container to-surface-container-high border-2 border-dashed ${
+              onClick={isMyTurn ? handleDrawCard : undefined}
+              className={`w-full min-h-[250px] rounded-2xl bg-gradient-to-br from-surface-container-low via-surface-container to-surface-container-high border-2 border-dashed ${
                 isMyTurn
                   ? "border-primary cursor-pointer active:scale-[0.98] shadow-md hover:border-primary/80"
-                  : "border-outline-variant/60 cursor-not-allowed opacity-90 shadow-sm"
+                  : "border-outline-variant/60 cursor-not-allowed shadow-sm"
               } p-6 flex flex-col items-center justify-center text-center transition-transform`}
             >
               <div
@@ -525,37 +525,39 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
                 </span>
               )}
             </div>
-
-            {/* CARD BACK: Mặt ngửa hiển thị câu hỏi (Card Face) */}
-            <div className="card-3d-face card-3d-back bg-surface-container-low border border-surface-container-high p-5 flex flex-col justify-between shadow-lg select-none">
+          ) : (
+            /* CARD BACK: Mặt ngửa hiển thị câu hỏi - Độ tương phản cao, chữ đậm rõ nét trên mọi điện thoại */
+            <div className="w-full rounded-2xl bg-white border-2 border-primary/20 p-5 flex flex-col justify-between shadow-xl animate-card-flip-crisp select-none">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-code-inline text-xs font-bold uppercase px-2.5 py-1 rounded bg-primary text-on-primary">
+                  <span className="font-code-inline text-xs font-bold uppercase px-2.5 py-1 rounded bg-black text-white shadow-xs">
                     {currentCard?.typeLabel || "THỬ THÁCH"}
                   </span>
-                  <span className="font-label-sm text-secondary font-medium">
+                  <span className="font-label-sm text-neutral-600 font-semibold">
                     {currentCard?.difficulty || "Độ khó: 3/5"}
                   </span>
                 </div>
-                <h3 className="font-headline-sm text-base font-bold text-on-surface mt-1">
+                <h3 className="font-headline-sm text-lg font-bold text-neutral-950 mt-1">
                   {currentCard?.title || "Thử Thách Nhậu"}
                 </h3>
-                <p className="font-body-md text-on-surface mt-2 leading-relaxed bg-surface-container-lowest p-3 rounded-xl border border-surface-container-high/60 shadow-xs">
-                  {currentCard?.description || "Đang tải nội dung lá bài..."}
-                </p>
+                <div className="mt-2.5 p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 shadow-xs">
+                  <p className="font-body-md text-neutral-950 font-semibold text-[15px] sm:text-[16px] leading-relaxed">
+                    {currentCard?.description || "Đang tải nội dung lá bài..."}
+                  </p>
+                </div>
               </div>
 
-              <div className="mt-3 pt-2.5 border-t border-surface-container-high flex items-center justify-between text-label-md">
-                <span className="text-error font-semibold flex items-center gap-1 truncate max-w-[220px]">
+              <div className="mt-4 pt-3 border-t border-neutral-200 flex items-center justify-between text-label-md">
+                <span className="text-red-700 font-bold flex items-center gap-1 truncate max-w-[220px]">
                   <span className="material-symbols-outlined text-[18px]">gavel</span>
                   <span>{currentCard?.penalty || "Phạt 1 ngụm"}</span>
                 </span>
-                <span className="font-bold text-secondary font-code-inline text-xs shrink-0">
+                <span className="font-bold text-neutral-700 font-code-inline text-xs shrink-0">
                   🍺 {beerConsumed} ngụm cả bàn
                 </span>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* PHẦN BÌNH CHỌN CHO CÂU HỎI VOTE / BÌNH CHỌN NGƯỜI TRONG BÀN */}
