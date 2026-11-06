@@ -137,7 +137,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
       await sendRoomInvite(targetUid, {
         roomCode,
         fromName: currentUser.name || "Chủ Xị",
-        fromAvatar: currentUser.avatar,
+        fromAvatar: currentUser.avatar || "",
       });
       setInvitedUids((prev) => ({ ...prev, [user.uid || targetUid]: true }));
       triggerToast(`🚀 Đã gửi lời mời trực tiếp tới màn hình của ${user.name}!`);

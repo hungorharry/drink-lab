@@ -34,6 +34,8 @@ service cloud.firestore {
     //   - round: int/number (optional, 0 to 1000)
     //   - votes: map (optional, player votes map, size <= 100)
     //   - endGameRequest: map (optional, all-player consensus request)
+    //   - designatedPlayer: map or null (optional, size <= 10)
+    //   - voteStartedAt: number or timestamp or null (optional)
     //
     // ---------------------------------------------------------------
     //
@@ -147,7 +149,9 @@ service cloud.firestore {
           'drawnAt',
           'round',
           'votes',
-          'endGameRequest'
+          'endGameRequest',
+          'designatedPlayer',
+          'voteStartedAt'
         ]) &&
         // Required field validation
         data.code is string &&
@@ -177,7 +181,9 @@ service cloud.firestore {
         (!('drawnAt' in data) || (data.drawnAt is number || data.drawnAt is timestamp)) &&
         (!('round' in data) || (data.round is number && data.round >= 0 && data.round <= 1000)) &&
         (!('votes' in data) || (data.votes is map && data.votes.size() <= 100)) &&
-        (!('endGameRequest' in data) || (data.endGameRequest is map));
+        (!('endGameRequest' in data) || (data.endGameRequest is map)) &&
+        (!('voteStartedAt' in data) || data.voteStartedAt == null || data.voteStartedAt is number || data.voteStartedAt is timestamp) &&
+        (!('designatedPlayer' in data) || data.designatedPlayer == null || (data.designatedPlayer is map && data.designatedPlayer.size() <= 10));
     }
 
     // ===============================================================

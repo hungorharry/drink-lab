@@ -27,6 +27,13 @@ export interface RoomState {
   history: CardHistoryItem[];
   reactions: { id: number; emoji: string; left: number; timestamp: number }[];
   votes?: Record<string, string>;
+  voteStartedAt?: number | null;
+  designatedPlayer?: {
+    playerName: string;
+    chosenBy: string;
+    timestamp: number;
+    direction?: "left" | "right";
+  } | null;
   endGameRequest?: {
     requesterName: string;
     requestedAt: number;
@@ -315,13 +322,25 @@ export interface OnlineUser {
 }
 
 /**
+ * Chuẩn hóa UID đồng bộ giữa Google Auth UID và Email fallback
+ */
+export function getCanonicalUid(user?: { uid?: string; email?: string } | null): string {
+  if (!user) return "";
+  if (user.uid && user.uid.trim()) return user.uid.trim();
+  if (user.email && user.email.trim()) {
+    return user.email.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, "_");
+  }
+  return "";
+}
+
+/**
  * Updates current user's online presence in Firestore
  */
 export async function updatePresence(
   user: { uid?: string; name: string; email: string; avatar?: string },
   currentRoomCode?: string | null
 ): Promise<void> {
-  const uid = user?.uid || (user?.email ? user.email.replace(/[^a-zA-Z0-9]/g, "_") : "");
+  const uid = getCanonicalUid(user);
   if (!isFirebaseConfigured || !db || !uid) return;
   try {
     const userRef = doc(db, "online_users", uid);
@@ -349,14 +368,18 @@ export async function sendRoomInvite(
   targetUid: string,
   invite: { roomCode: string; fromName: string; fromAvatar?: string }
 ): Promise<void> {
-  if (!isFirebaseConfigured || !db || !targetUid) return;
+  const cleanUid = (targetUid || "").trim();
+  if (!isFirebaseConfigured || !db || !cleanUid) return;
   try {
-    const userRef = doc(db, "online_users", targetUid);
+    const userRef = doc(db, "online_users", cleanUid);
     await setDoc(
       userRef,
       {
+        uid: cleanUid,
         incomingInvite: {
-          ...invite,
+          roomCode: invite.roomCode || "",
+          fromName: invite.fromName || "Bạn Nhậu",
+          fromAvatar: invite.fromAvatar || "",
           timestamp: Date.now(),
         },
       },
@@ -371,12 +394,14 @@ export async function sendRoomInvite(
  * Clears an incoming invitation for the current user
  */
 export async function clearRoomInvite(myUid: string): Promise<void> {
-  if (!isFirebaseConfigured || !db || !myUid) return;
+  const cleanUid = (myUid || "").trim();
+  if (!isFirebaseConfigured || !db || !cleanUid) return;
   try {
-    const userRef = doc(db, "online_users", myUid);
+    const userRef = doc(db, "online_users", cleanUid);
     await setDoc(
       userRef,
       {
+        uid: cleanUid,
         incomingInvite: null,
       },
       { merge: true }

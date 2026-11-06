@@ -23,6 +23,7 @@ import {
   subscribeToActiveRooms,
   subscribeToUserDoc,
   clearRoomInvite,
+  getCanonicalUid,
 } from "@/lib/roomService";
 
 export default function Home() {
@@ -109,16 +110,25 @@ export default function Home() {
 
   // 4. Lắng nghe Lời Mời Trực Tiếp từ bạn bè (In-app realtime invite)
   useEffect(() => {
-    if (!currentUser?.uid) return;
+    const currentUid = getCanonicalUid(currentUser);
+    if (!currentUid) return;
 
-    const unsubUser = subscribeToUserDoc(currentUser.uid, (userDoc) => {
+    const unsubUser = subscribeToUserDoc(currentUid, (userDoc) => {
       if (userDoc?.incomingInvite) {
         const invite = userDoc.incomingInvite;
         const elapsed = Date.now() - (invite.timestamp || 0);
-        // Lời mời trong vòng 60 giây và khác phòng hiện tại
-        if (elapsed < 60000 && invite.roomCode !== roomCode) {
-          setIncomingInvite(invite);
-          sounds.playBeerClink();
+        // Lời mời có hiệu lực trong 2 phút
+        if (elapsed < 120000) {
+          // Hiện modal nếu người dùng đang ở ngoài màn hình chính, hoặc khác phòng thực tế đang chơi
+          const isAlreadyInThatRoom =
+            currentScreen !== "auth" &&
+            roomData?.code &&
+            roomData.code.toUpperCase() === invite.roomCode.toUpperCase();
+
+          if (!isAlreadyInThatRoom) {
+            setIncomingInvite(invite);
+            sounds.playBeerClink();
+          }
         }
       }
     });
@@ -126,7 +136,7 @@ export default function Home() {
     return () => {
       unsubUser();
     };
-  }, [currentUser?.uid, roomCode]);
+  }, [currentUser, roomCode, currentScreen, roomData?.code]);
 
   // 5. Kiểm tra URL query param khi người khác bấm vào link mời (?room=XYZ hoặc ?join=XYZ)
   useEffect(() => {
@@ -259,8 +269,9 @@ export default function Home() {
   // 11. Xử lý Chấp Nhận / Từ Chối Lời Mời
   const handleAcceptInvite = async (targetCode: string) => {
     sounds.playBeerClink();
-    if (currentUser?.uid) {
-      await clearRoomInvite(currentUser.uid);
+    const currentUid = getCanonicalUid(currentUser);
+    if (currentUid) {
+      await clearRoomInvite(currentUid);
     }
     setIncomingInvite(null);
     setIsInvited(false);
@@ -277,8 +288,9 @@ export default function Home() {
 
   const handleDeclineInvite = async () => {
     sounds.playCardFlip();
-    if (currentUser?.uid) {
-      await clearRoomInvite(currentUser.uid);
+    const currentUid = getCanonicalUid(currentUser);
+    if (currentUid) {
+      await clearRoomInvite(currentUid);
     }
     setIncomingInvite(null);
     setIsInvited(false);

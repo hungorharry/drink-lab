@@ -44,6 +44,8 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
   const [voteWinner, setVoteWinner] = useState<{ name: string; count: number } | null>(null);
   const [showImmunityModal, setShowImmunityModal] = useState<boolean>(false);
   const [luckyPlayerName, setLuckyPlayerName] = useState<string>("");
+  const [isSpinningRoulette, setIsSpinningRoulette] = useState<boolean>(false);
+  const [spinningName, setSpinningName] = useState<string>("");
   const [floatingEmojis, setFloatingEmojis] = useState<
     { id: number; emoji: string; left: number }[]
   >([]);
@@ -112,6 +114,35 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       )
   );
 
+  // Kiểm tra xem thẻ có yêu cầu chỉ định người khác không
+  const isDesignateCard = Boolean(
+    currentCard &&
+      (
+        currentCard.description.toLowerCase().includes("chỉ định") ||
+        currentCard.description.toLowerCase().includes("chọn 1 người") ||
+        currentCard.description.toLowerCase().includes("chọn một người") ||
+        currentCard.description.toLowerCase().includes("thách đấu") ||
+        currentCard.description.toLowerCase().includes("bắt 1 người") ||
+        currentCard.description.toLowerCase().includes("uống cùng 1 người") ||
+        currentCard.description.toLowerCase().includes("chọn người") ||
+        currentCard.title.toLowerCase().includes("chỉ định") ||
+        currentCard.title.toLowerCase().includes("thách đấu")
+      )
+  );
+
+  // Kiểm tra xem thẻ có nói về "người bên cạnh" không
+  const isNeighborCard = Boolean(
+    currentCard &&
+      (
+        currentCard.description.toLowerCase().includes("bên cạnh") ||
+        currentCard.title.toLowerCase().includes("bên cạnh")
+      )
+  );
+
+  const activeIdx = players.length > 0 ? (currentTurnIdx % players.length) : 0;
+  const leftNeighbor = players.length > 1 ? players[(activeIdx - 1 + players.length) % players.length] : undefined;
+  const rightNeighbor = players.length > 1 ? players[(activeIdx + 1) % players.length] : undefined;
+
   // Thống kê bình chọn cho câu hỏi vote
   const voteCounts: Record<string, number> = {};
   Object.values(votes).forEach((targetName) => {
@@ -140,26 +171,29 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
     }
   }, [isFlipped, cardIndex]);
 
-  // Đếm ngược 10 giây cho câu hỏi Bình Chọn (Vote)
+  // Đếm ngược 10 giây cho câu hỏi Bình Chọn (Vote) đồng bộ Firestore voteStartedAt
   useEffect(() => {
     if (isFlipped && isVoteCard) {
-      setVoteCountdown(10);
+      const calcRemaining = () => {
+        const start = roomData?.voteStartedAt || Date.now();
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+        return Math.max(0, 10 - elapsed);
+      };
+      setVoteCountdown(calcRemaining());
       setVoteWinner(null);
       const interval = setInterval(() => {
-        setVoteCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+        const rem = calcRemaining();
+        setVoteCountdown(rem);
+        if (rem <= 0) {
+          clearInterval(interval);
+        }
+      }, 500);
       return () => clearInterval(interval);
     } else {
       setVoteCountdown(10);
       setVoteWinner(null);
     }
-  }, [isFlipped, cardIndex, isVoteCard]);
+  }, [isFlipped, cardIndex, isVoteCard, roomData?.voteStartedAt]);
 
   // Chốt người có số phiếu cao nhất khi hết 10 giây hoặc tất cả người chơi đã vote
   useEffect(() => {
@@ -222,6 +256,13 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       if (Date.now() - latest.timestamp < 3000) {
         setFloatingEmojis((prev) => {
           if (prev.some((e) => e.id === latest.id)) return prev;
+
+          // Phát âm thanh cảm xúc trên mọi thiết bị trong phòng!
+          if (latest.emoji === "😂") sounds.playHahaLaugh();
+          else if (latest.emoji === "👏") sounds.playApplause();
+          else if (latest.emoji === "🍺") sounds.playChantDrink();
+          else if (latest.emoji === "👀") sounds.playDramaSting();
+
           return [...prev, { id: latest.id, emoji: latest.emoji, left: latest.left }];
         });
         setTimeout(() => {
@@ -264,6 +305,8 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
     await updateRoom(roomCode, {
       isFlipped: true,
       votes: {}, // Reset votes cho lá bài mới
+      voteStartedAt: Date.now(),
+      designatedPlayer: null,
       updatedAt: Date.now(),
     });
   };
@@ -382,6 +425,8 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       history: updatedHistory,
       players: updatedPlayers,
       votes: {},
+      voteStartedAt: null,
+      designatedPlayer: null,
       updatedAt: Date.now(),
     });
 
@@ -462,11 +507,103 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       history: updatedHistory,
       players: updatedPlayers,
       votes: {},
+      voteStartedAt: null,
+      designatedPlayer: null,
       updatedAt: Date.now(),
     });
 
     const nextPlayerName = players[nextTurn]?.name || "người tiếp theo";
     triggerToast(`🛡️ Thoát phạt thành công! Chuyển lượt sang ${nextPlayerName} 🍻`);
+  };
+
+  // 5. Quay Vòng May Mắn Roulette Chọn Người Bị Chỉ Định
+  const handleSpinRoulette = async () => {
+    if (!isMyTurn) {
+      triggerToast(`⛔ Chỉ ${activePlayer?.name} mới có quyền quay may mắn!`);
+      return;
+    }
+    const candidates = players.filter((p) => p.name !== activePlayer?.name);
+    if (candidates.length === 0) {
+      triggerToast("Bàn chơi cần ít nhất 2 người để quay chọn người!");
+      return;
+    }
+
+    setIsSpinningRoulette(true);
+    triggerHaptic("heavy");
+
+    let counter = 0;
+    const spinInterval = setInterval(() => {
+      counter++;
+      const rand = candidates[Math.floor(Math.random() * candidates.length)];
+      setSpinningName(rand.name);
+      sounds.playShuffle();
+
+      if (counter >= 16) {
+        clearInterval(spinInterval);
+        const finalCandidate = candidates[Math.floor(Math.random() * candidates.length)];
+        setSpinningName(finalCandidate.name);
+        setIsSpinningRoulette(false);
+        sounds.playFanfareCelebration();
+        triggerToast(`🎯 Vòng quay đã chỉ định trúng: ${finalCandidate.name}!`);
+
+        updateRoom(roomCode, {
+          designatedPlayer: {
+            playerName: finalCandidate.name,
+            chosenBy: activePlayer?.name || "Người rút",
+            timestamp: Date.now(),
+          },
+          updatedAt: Date.now(),
+        });
+      }
+    }, 100);
+  };
+
+  // 6. Quay Hướng Ngẫu Nhiên: Bên Trái 👈 hay Bên Phải 👉
+  const handleSpinDirection = async () => {
+    if (!isMyTurn) {
+      triggerToast(`⛔ Chỉ ${activePlayer?.name} mới có quyền quay hướng!`);
+      return;
+    }
+    if (!leftNeighbor && !rightNeighbor) {
+      triggerToast("Bàn chơi cần ít nhất 2 người!");
+      return;
+    }
+
+    setIsSpinningRoulette(true);
+    triggerHaptic("medium");
+
+    let counter = 0;
+    const spinInterval = setInterval(() => {
+      counter++;
+      const dir: "left" | "right" = counter % 2 === 0 ? "left" : "right";
+      const targetName =
+        dir === "left"
+          ? leftNeighbor?.name || "Bên Trái"
+          : rightNeighbor?.name || "Bên Phải";
+      setSpinningName(`${dir === "left" ? "👈 Bên Trái:" : "👉 Bên Phải:"} ${targetName}`);
+      sounds.playShuffle();
+
+      if (counter >= 14) {
+        clearInterval(spinInterval);
+        const finalDir: "left" | "right" = Math.random() < 0.5 ? "left" : "right";
+        const chosenNeighbor = finalDir === "left" ? leftNeighbor : rightNeighbor;
+        const targetText = `${finalDir === "left" ? "👈 BÊN TRÁI" : "👉 BÊN PHẢI"}: ${chosenNeighbor?.name || "Bạn nhậu"}`;
+        setSpinningName(targetText);
+        setIsSpinningRoulette(false);
+        sounds.playFanfareCelebration();
+        triggerToast(`🧭 Hướng đã chọn: ${finalDir === "left" ? "👈 BÊN TRÁI" : "👉 BÊN PHẢI"} (${chosenNeighbor?.name})!`);
+
+        updateRoom(roomCode, {
+          designatedPlayer: {
+            playerName: chosenNeighbor?.name || (finalDir === "left" ? "Bên Trái" : "Bên Phải"),
+            chosenBy: activePlayer?.name || "Người rút",
+            direction: finalDir,
+            timestamp: Date.now(),
+          },
+          updatedAt: Date.now(),
+        });
+      }
+    }, 110);
   };
 
   // 4. Cơ chế Kết Thúc Ván: Solo kết thúc ngay, Multiplayer đếm ngược 20s
@@ -543,10 +680,15 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
     });
   };
 
-  // 5. Tương tác cảm xúc
+  // 7. Tương tác cảm xúc
   const handleSpectatorReaction = async (emoji: string, actionText: string) => {
     triggerHaptic("light");
-    sounds.playBeerClink();
+    if (emoji === "😂") sounds.playHahaLaugh();
+    else if (emoji === "👏") sounds.playApplause();
+    else if (emoji === "🍺") sounds.playChantDrink();
+    else if (emoji === "👀") sounds.playDramaSting();
+    else sounds.playBeerClink();
+
     triggerToast(`Bạn đã gửi ${actionText} tới ${activePlayer?.name || "bàn nhậu"}!`);
 
     const newReaction = {
@@ -761,6 +903,103 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
             </div>
           )}
         </div>
+
+        {/* HIỆU ỨNG VÒNG QUAY MAY MẮN ROULETTE ĐANG CHẠY */}
+        {isSpinningRoulette && (
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 border-2 border-amber-600 text-neutral-950 text-center shadow-lg animate-pulse select-none">
+            <span className="text-[11px] font-extrabold uppercase tracking-widest block text-amber-950">
+              🎲 ĐANG QUAY MAY MẮN ROULETTE...
+            </span>
+            <span className="text-lg sm:text-xl font-black tracking-tight block mt-1 drop-shadow-xs">
+              {spinningName || "Đang quay chọn..."}
+            </span>
+          </div>
+        )}
+
+        {/* BANNER KẾT QUẢ NGƯỜI BỊ CHỈ ĐỊNH / HƯỚNG BÊN CẠNH (HIỂN THỊ TRÊN TẤT CẢ CÁC MÁY) */}
+        {isFlipped && roomData?.designatedPlayer && (
+          <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-yellow-400/25 to-amber-500/20 border-2 border-amber-500 shadow-sm flex items-center justify-between animate-fadeIn">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-amber-500 text-neutral-950 flex items-center justify-center text-xl shrink-0 font-bold shadow-xs">
+                {roomData.designatedPlayer.direction === "left"
+                  ? "👈"
+                  : roomData.designatedPlayer.direction === "right"
+                  ? "👉"
+                  : "🎯"}
+              </div>
+              <div className="min-w-0">
+                <span className="text-[10px] uppercase font-bold text-amber-900 tracking-wider block">
+                  {roomData.designatedPlayer.direction
+                    ? `Hướng được chọn (${roomData.designatedPlayer.direction === "left" ? "Bên Trái" : "Bên Phải"}):`
+                    : "Người Bị Chỉ Định Thử Thách:"}
+                </span>
+                <span className="text-xs sm:text-sm font-extrabold text-neutral-950 truncate block">
+                  {roomData.designatedPlayer.playerName}
+                </span>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-lg bg-primary text-on-primary text-[10px] font-bold shrink-0 shadow-xs">
+              {roomData.designatedPlayer.chosenBy} đã quay 🎲
+            </span>
+          </div>
+        )}
+
+        {/* PHẦN XÁC ĐỊNH BẠN NHẬU NGỒI BÊN CẠNH (TRÁI HAY PHẢI?) */}
+        {isFlipped && isNeighborCard && (
+          <div className="p-3 rounded-2xl bg-surface-container border border-surface-container-high space-y-2 animate-fadeIn">
+            <div className="flex items-center justify-between text-xs font-bold text-on-surface">
+              <span>👥 Bạn Nhậu Ngồi Bên Cạnh:</span>
+              <span className="text-secondary font-normal text-[11px]">Theo vị trí bàn nhậu</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 rounded-xl bg-surface-container-lowest border border-surface-container-high flex items-center gap-2">
+                <span className="text-lg">👈</span>
+                <div className="min-w-0">
+                  <span className="text-[10px] text-secondary font-medium block">Bên Trái</span>
+                  <span className="font-bold text-on-surface truncate block">{leftNeighbor?.name || "Chưa có"}</span>
+                </div>
+              </div>
+              <div className="p-2 rounded-xl bg-surface-container-lowest border border-surface-container-high flex items-center gap-2">
+                <span className="text-lg">👉</span>
+                <div className="min-w-0">
+                  <span className="text-[10px] text-secondary font-medium block">Bên Phải</span>
+                  <span className="font-bold text-on-surface truncate block">{rightNeighbor?.name || "Chưa có"}</span>
+                </div>
+              </div>
+            </div>
+            {isMyTurn && (
+              <button
+                type="button"
+                disabled={isSpinningRoulette}
+                onClick={handleSpinDirection}
+                className="w-full py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+              >
+                <span>🧭 Quay Hướng Ngẫu Nhiên (Trái hay Phải?)</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* NÚT VÒNG QUAY MAY MẮN CHỈ ĐỊNH CHO NGƯỜI RÚT THẺ */}
+        {isFlipped && isMyTurn && !isVoteCard && !isNeighborCard && (
+          <button
+            type="button"
+            disabled={isSpinningRoulette}
+            onClick={handleSpinRoulette}
+            className={`w-full py-2.5 px-3 rounded-xl ${
+              isDesignateCard
+                ? "bg-gradient-to-r from-red-600 via-amber-600 to-red-600 shadow-md animate-bounce"
+                : "bg-surface-container-high hover:bg-surface-container-highest border border-primary/20 text-on-surface"
+            } text-xs font-bold flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer`}
+          >
+            <span className="text-base">{isDesignateCard ? "🎯" : "🎲"}</span>
+            <span>
+              {isDesignateCard
+                ? "Quay May Mắn Chọn Nạn Nhân Bị Chỉ Định 🎲"
+                : "🎲 Quay Roulette May Mắn (Chọn 1 Người Ngẫu Nhiên)"}
+            </span>
+          </button>
+        )}
 
         {/* PHẦN BÌNH CHỌN CHO CÂU HỎI VOTE / BÌNH CHỌN NGƯỜI TRONG BÀN */}
         {isFlipped && isVoteCard && (

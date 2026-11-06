@@ -313,6 +313,142 @@ class SoundManager {
       noise.start(crashStart);
     } catch (e) {}
   }
+
+  // 8. Âm thanh Cười Haha (Laugh "Ha Ha Ha Ha! 😂")
+  public playHahaLaugh() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      // 5 chuỗi tiếng cười "Hắc hắc hắc ha ha"
+      const laughPitches = [420, 500, 460, 520, 410, 360];
+      laughPitches.forEach((pitch, i) => {
+        const t = now + i * 0.11;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(pitch, t);
+        osc.frequency.exponentialRampToValueAtTime(pitch * 0.65, t + 0.09);
+
+        gain.gain.setValueAtTime(0.18, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.09);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(900, t);
+        filter.Q.setValueAtTime(2.5, t);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(t);
+        osc.stop(t + 0.1);
+      });
+    } catch (e) {}
+  }
+
+  // 9. Âm thanh Vỗ Tay Đám Đông (Crowd Applause / Clapping 👏)
+  public playApplause() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const totalClaps = 16;
+      for (let i = 0; i < totalClaps; i++) {
+        const t = now + i * 0.06 + Math.random() * 0.03;
+        const bufferSize = Math.floor(ctx.sampleRate * 0.04);
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let j = 0; j < bufferSize; j++) {
+          data[j] = Math.random() * 2 - 1;
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(1100 + Math.random() * 500, t);
+        filter.Q.setValueAtTime(1.5, t);
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.15 + Math.random() * 0.08, t);
+        gain.gain.exponentialRampToValueAtTime(0.005, t + 0.04);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        noise.start(t);
+      }
+    } catch (e) {}
+  }
+
+  // 10. Khẩu lệnh AI Giọng Đọc "Uống đi! Uống đi! Uống đi! 🍻" (AI Voice Chant)
+  public playChantDrink() {
+    if (this.isMuted) return;
+    // Cụng ly bia kèm theo
+    this.playBeerClink();
+
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const chant = new SpeechSynthesisUtterance("Uống đi! Uống đi! Uống đi!");
+        chant.lang = "vi-VN";
+        chant.rate = 1.15;
+        chant.pitch = 1.25;
+        chant.volume = 1.0;
+        window.speechSynthesis.speak(chant);
+      } catch (e) {}
+    }
+  }
+
+  // 11. Âm thanh Hóng Biến Drama Giật Gân "Dun Dun Dunnn! 👀" (Drama Sting)
+  public playDramaSting() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      // 3 nốt kịch tính chấn động: Dun (D3 - 146Hz) - Dun (C#3 - 138Hz) - Dunnn (Bb2 - 116Hz)
+      const stings = [
+        { freq: 146.8, time: 0, dur: 0.16 },
+        { freq: 138.6, time: 0.22, dur: 0.16 },
+        { freq: 116.5, time: 0.44, dur: 0.75 },
+      ];
+
+      stings.forEach(({ freq, time, dur }) => {
+        const t = now + time;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, t);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(800, t);
+        filter.frequency.exponentialRampToValueAtTime(300, t + dur);
+
+        gain.gain.setValueAtTime(0.25, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+      });
+    } catch (e) {}
+  }
 }
 
 export const sounds = new SoundManager();
