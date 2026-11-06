@@ -20,6 +20,7 @@ export interface Player {
   avatar?: string;
   tolerance?: string;
   drinksCount?: number;
+  immunityTokens?: number;
 }
 
 export interface CardHistoryItem {

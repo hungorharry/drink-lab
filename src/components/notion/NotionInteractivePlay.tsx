@@ -40,6 +40,10 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
   const [isHistoryOpen, setIsHistoryOpen] = useState<boolean>(false);
   const [readCountdown, setReadCountdown] = useState<number>(0);
   const [endGameCountdown, setEndGameCountdown] = useState<number>(20);
+  const [voteCountdown, setVoteCountdown] = useState<number>(10);
+  const [voteWinner, setVoteWinner] = useState<{ name: string; count: number } | null>(null);
+  const [showImmunityModal, setShowImmunityModal] = useState<boolean>(false);
+  const [luckyPlayerName, setLuckyPlayerName] = useState<string>("");
   const [floatingEmojis, setFloatingEmojis] = useState<
     { id: number; emoji: string; left: number }[]
   >([]);
@@ -90,7 +94,7 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
           currentUser.name &&
           activePlayer.name.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
       )
-  ) || (players.length <= 1); // Chỉ cho phép nếu chơi thử solo 1 người
+  );
 
   // Kiểm tra xem thẻ hiện tại có phải câu hỏi vote / bình chọn cả bàn không
   const isVoteCard = Boolean(
@@ -107,6 +111,15 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
         currentCard.description.toLowerCase().includes("đồng loạt chỉ")
       )
   );
+
+  // Thống kê bình chọn cho câu hỏi vote
+  const voteCounts: Record<string, number> = {};
+  Object.values(votes).forEach((targetName) => {
+    voteCounts[targetName] = (voteCounts[targetName] || 0) + 1;
+  });
+  const myCurrentVote = currentUser
+    ? votes[currentUser.uid || currentUser.email || currentUser.name]
+    : undefined;
 
   // 6 giây đếm ngược đọc thử thách trước khi được bấm hoàn thành
   useEffect(() => {
@@ -126,6 +139,50 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       setReadCountdown(0);
     }
   }, [isFlipped, cardIndex]);
+
+  // Đếm ngược 10 giây cho câu hỏi Bình Chọn (Vote)
+  useEffect(() => {
+    if (isFlipped && isVoteCard) {
+      setVoteCountdown(10);
+      setVoteWinner(null);
+      const interval = setInterval(() => {
+        setVoteCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setVoteCountdown(10);
+      setVoteWinner(null);
+    }
+  }, [isFlipped, cardIndex, isVoteCard]);
+
+  // Chốt người có số phiếu cao nhất khi hết 10 giây hoặc tất cả người chơi đã vote
+  useEffect(() => {
+    if (
+      isFlipped &&
+      isVoteCard &&
+      (voteCountdown === 0 || (Object.keys(votes).length >= players.length && players.length > 1))
+    ) {
+      let maxCount = -1;
+      let topPlayerName = "";
+      Object.entries(voteCounts).forEach(([name, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          topPlayerName = name;
+        }
+      });
+
+      if (topPlayerName && maxCount > 0 && (!voteWinner || voteWinner.name !== topPlayerName)) {
+        setVoteWinner({ name: topPlayerName, count: maxCount });
+        sounds.playFanfareCelebration();
+      }
+    }
+  }, [voteCountdown, isFlipped, isVoteCard, votes, voteCounts, players.length, voteWinner]);
 
   // Đếm ngược 20 giây tự động kết thúc ván nếu không ai phản hồi từ chối
   useEffect(() => {
@@ -214,6 +271,10 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
   // 2. Bỏ phiếu bình chọn người trong phòng (cho các câu hỏi Poll / Vote)
   const handleVotePlayer = async (targetPlayerName: string) => {
     if (!currentUser) return;
+    if (voteCountdown === 0) {
+      triggerToast("🔒 Đã hết 10 giây bình chọn! Kết quả đã được chốt.");
+      return;
+    }
     triggerHaptic("medium");
     sounds.playBeerClink();
     triggerToast(`🗳️ Bạn đã bình chọn cho: ${targetPlayerName}`);
@@ -249,6 +310,14 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       setTimeout(() => sounds.playBeerClink(), 150);
     }
 
+    // Tỉ lệ cực kỳ thấp (~4%) xuất hiện Kim Bài Miễn Tử (Lệnh Bài Miễn Uống)
+    const gotImmunityToken = Math.random() < 0.04;
+    if (gotImmunityToken) {
+      sounds.playFanfareCelebration();
+      setLuckyPlayerName(activePlayer.name);
+      setShowImmunityModal(true);
+    }
+
     const historyEntry: CardHistoryItem = {
       id: `hist-${Date.now()}`,
       turnNumber: cardIndex + 1,
@@ -263,7 +332,9 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       result: resultType,
       resultText:
         resultType === "passed"
-          ? "Đã dũng cảm hoàn thành thử thách ✅"
+          ? gotImmunityToken
+            ? "Đã hoàn thành thử thách & NHẬN ĐƯỢC KIM BÀI MIỄN TỬ 🛡️"
+            : "Đã dũng cảm hoàn thành thử thách ✅"
           : `Đã uống ${penaltySips} ngụm phạt 🍺`,
       sips: penaltySips,
       timestamp: "Vừa xong",
@@ -274,10 +345,14 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
     const updatedHistory = [historyEntry, ...historyList];
     const updatedBeer = beerConsumed + penaltySips;
 
-    // Cập nhật số ngụm của người chơi
+    // Cập nhật số ngụm của người chơi và cộng Lệnh Bài Miễn Uống nếu may mắn
     const updatedPlayers = players.map((p, idx) => {
       if (idx === (currentTurnIdx % players.length)) {
-        return { ...p, drinksCount: (p.drinksCount || 0) + penaltySips };
+        return {
+          ...p,
+          drinksCount: (p.drinksCount || 0) + penaltySips,
+          immunityTokens: (p.immunityTokens || 0) + (gotImmunityToken ? 1 : 0),
+        };
       }
       return p;
     });
@@ -311,7 +386,87 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
     });
 
     const nextPlayerName = players[nextTurn]?.name || "người tiếp theo";
-    triggerToast(`Đã ghi nhận! Chuyển lượt sang ${nextPlayerName} 🍻`);
+    triggerToast(
+      gotImmunityToken
+        ? `🎉 ${activePlayer.name} nhận được KIM BÀI MIỄN TỬ! Lượt sang ${nextPlayerName} 🍻`
+        : `Đã ghi nhận! Chuyển lượt sang ${nextPlayerName} 🍻`
+    );
+  };
+
+  // 4. Dùng Kim Bài Miễn Tử (Lệnh Bài Miễn Uống) để thoát phạt
+  const handleUseImmunityToken = async () => {
+    if (!isMyTurn) {
+      triggerToast(`⛔ Chỉ ${activePlayer?.name} mới có quyền dùng Lệnh Bài lúc này!`);
+      return;
+    }
+    if ((activePlayer?.immunityTokens || 0) <= 0) {
+      triggerToast("🛡️ Bạn chưa sở hữu Lệnh Bài Miễn Uống!");
+      return;
+    }
+    if (!currentCard || !activePlayer) return;
+
+    triggerHaptic("heavy");
+    sounds.playFanfareCelebration();
+    triggerToast(`🛡️ ${activePlayer.name} đã xuất chiêu KIM BÀI MIỄN TỬ, miễn hoàn toàn ngụm phạt!`);
+
+    const historyEntry: CardHistoryItem = {
+      id: `hist-${Date.now()}`,
+      turnNumber: cardIndex + 1,
+      playerId: activePlayer.id,
+      playerName: activePlayer.name,
+      playerInitial: activePlayer.initial || activePlayer.name.slice(0, 2).toUpperCase(),
+      cardTitle: currentCard.title,
+      cardContent: currentCard.description,
+      cardType: currentCard.type,
+      cardTypeLabel: currentCard.typeLabel,
+      penalty: currentCard.penalty,
+      result: "passed",
+      resultText: "🛡️ ĐÃ DÙNG KIM BÀI MIỄN TỬ (Miễn uống phạt 0 ngụm)",
+      sips: 0,
+      timestamp: "Vừa xong",
+    };
+
+    const nextCardIdx = cardIndex + 1;
+    const nextTurn = players.length > 0 ? (currentTurnIdx + 1) % players.length : 0;
+    const updatedHistory = [historyEntry, ...historyList];
+
+    // Trừ 1 thẻ kim bài miễn tử của người chơi hiện tại
+    const updatedPlayers = players.map((p, idx) => {
+      if (idx === (currentTurnIdx % players.length)) {
+        return {
+          ...p,
+          immunityTokens: Math.max(0, (p.immunityTokens || 1) - 1),
+        };
+      }
+      return p;
+    });
+
+    if (nextCardIdx >= deck.length) {
+      sounds.playBeerClink();
+      await updateRoom(roomCode, {
+        status: "summary",
+        beerConsumed,
+        history: updatedHistory,
+        players: updatedPlayers,
+        votes: {},
+        updatedAt: Date.now(),
+      });
+      if (onFinishGame) onFinishGame();
+      return;
+    }
+
+    await updateRoom(roomCode, {
+      isFlipped: false,
+      currentCardIndex: nextCardIdx,
+      currentTurnIdx: nextTurn,
+      history: updatedHistory,
+      players: updatedPlayers,
+      votes: {},
+      updatedAt: Date.now(),
+    });
+
+    const nextPlayerName = players[nextTurn]?.name || "người tiếp theo";
+    triggerToast(`🛡️ Thoát phạt thành công! Chuyển lượt sang ${nextPlayerName} 🍻`);
   };
 
   // 4. Cơ chế Kết Thúc Ván: Solo kết thúc ngay, Multiplayer đếm ngược 20s
@@ -408,15 +563,6 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
   };
 
   const penaltySips = parseSips(currentCard?.penalty);
-
-  // Thống kê bình chọn cho câu hỏi vote
-  const voteCounts: Record<string, number> = {};
-  Object.values(votes).forEach((targetName) => {
-    voteCounts[targetName] = (voteCounts[targetName] || 0) + 1;
-  });
-  const myCurrentVote = currentUser
-    ? votes[currentUser.uid || currentUser.email || currentUser.name]
-    : undefined;
 
   const currentUserId = currentUser?.uid || currentUser?.email || currentUser?.name || "";
   const hasApprovedEndGame = Boolean(endGameRequest?.approvals?.includes(currentUserId));
@@ -618,29 +764,76 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
 
         {/* PHẦN BÌNH CHỌN CHO CÂU HỎI VOTE / BÌNH CHỌN NGƯỜI TRONG BÀN */}
         {isFlipped && isVoteCard && (
-          <div className="p-3 rounded-2xl bg-surface-container border border-primary/30 space-y-2 animate-fadeIn">
+          <div className="p-3.5 rounded-2xl bg-surface-container border border-primary/30 space-y-2.5 animate-fadeIn">
             <div className="flex items-center justify-between">
-              <span className="font-headline-sm text-xs font-bold text-on-surface flex items-center gap-1">
+              <span className="font-headline-sm text-xs font-bold text-on-surface flex items-center gap-1.5">
                 <span>🗳️</span>
                 <span>Bình Chọn Người Trong Phòng:</span>
               </span>
-              <span className="text-[11px] font-code-inline text-secondary">
-                {Object.keys(votes).length}/{players.length} Đã Vote
-              </span>
+              <div className="flex items-center gap-1.5">
+                {voteCountdown > 0 ? (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-code-inline text-[11px] font-bold animate-pulse">
+                    ⏳ Còn {voteCountdown}s
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full bg-neutral-900 text-white font-code-inline text-[11px] font-bold">
+                    🔒 ĐÃ CHỐT VOTE
+                  </span>
+                )}
+                <span className="text-[11px] font-code-inline text-secondary">
+                  ({Object.keys(votes).length}/{players.length} Đã Vote)
+                </span>
+              </div>
             </div>
+
+            {/* Thanh tiến trình đếm ngược 10 giây */}
+            {voteCountdown > 0 && (
+              <div className="w-full bg-surface-container-high rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-amber-600 h-1.5 transition-all duration-1000"
+                  style={{ width: `${(voteCountdown / 10) * 100}%` }}
+                ></div>
+              </div>
+            )}
+
+            {/* BẢNG CHỐT NGƯỜI BỊ BÌNH CHỌN NHIỀU NHẤT */}
+            {voteWinner && (
+              <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 border-2 border-amber-500 shadow-sm flex items-center justify-between animate-fadeIn">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-2xl animate-bounce">👑</span>
+                  <div className="min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-amber-800 tracking-wider block">
+                      Kết Quả Chốt Bình Chọn:
+                    </span>
+                    <span className="text-xs font-extrabold text-neutral-950 truncate block">
+                      {voteWinner.name} ({voteWinner.count} phiếu)
+                    </span>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-[11px] font-extrabold shrink-0 shadow-xs">
+                  Phạt {penaltySips} Ngụm 🍺
+                </span>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-1.5">
               {players.map((p) => {
                 const count = voteCounts[p.name] || 0;
                 const isSelected = myCurrentVote === p.name;
+                const isWinner = voteWinner?.name === p.name;
                 return (
                   <button
                     key={p.name}
                     type="button"
+                    disabled={voteCountdown === 0}
                     onClick={() => handleVotePlayer(p.name)}
                     className={`p-2 rounded-xl flex items-center justify-between gap-1.5 border transition-all text-left ${
-                      isSelected
+                      isWinner
+                        ? "border-amber-500 ring-2 ring-amber-400/50 bg-amber-50/80 font-bold"
+                        : isSelected
                         ? "bg-primary text-on-primary border-primary shadow-xs font-bold"
+                        : voteCountdown === 0
+                        ? "bg-surface-container-lowest border-surface-container-high opacity-70 cursor-not-allowed text-on-surface"
                         : "bg-surface-container-lowest hover:bg-surface-container-high border-surface-container-high text-on-surface"
                     }`}
                   >
@@ -680,6 +873,23 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
                       ⏳ Đang đọc thử thách &amp; chuẩn bị ({readCountdown}s)...
                     </span>
                   </div>
+                )}
+
+                {/* Nút Kim Bài Miễn Tử nếu người chơi có sở hữu */}
+                {(activePlayer?.immunityTokens || 0) > 0 && (
+                  <button
+                    onClick={handleUseImmunityToken}
+                    disabled={readCountdown > 0}
+                    type="button"
+                    className={`w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-neutral-950 font-headline-sm text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md transition-all border border-amber-300 ${
+                      readCountdown > 0
+                        ? "opacity-60 cursor-not-allowed"
+                        : "hover:brightness-105 active:scale-95 cursor-pointer animate-pulse"
+                    }`}
+                  >
+                    <span className="text-base">🛡️</span>
+                    <span>DÙNG KIM BÀI MIỄN TỬ (Còn x{activePlayer?.immunityTokens})</span>
+                  </button>
                 )}
 
                 <button
@@ -796,6 +1006,36 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
           <span className="material-symbols-outlined text-[15px]">trophy</span>
         </button>
       </div>
+
+      {/* Popup Nhận Được Kim Bài Miễn Tử (Lệnh Bài Miễn Uống) */}
+      {showImmunityModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-surface-container-lowest max-w-sm w-full rounded-3xl border-2 border-amber-500 p-6 text-center shadow-2xl relative">
+            <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-amber-100 flex items-center justify-center text-3xl shadow-inner animate-bounce">
+              🛡️
+            </div>
+            <span className="inline-block px-3 py-1 rounded-full bg-amber-500 text-neutral-950 text-[10px] font-extrabold uppercase tracking-wider mb-1">
+              VẬN MAY CỰC HIẾM!
+            </span>
+            <h4 className="text-lg font-extrabold text-neutral-950 mt-1">
+              🎉 Chúc Mừng {luckyPlayerName}!
+            </h4>
+            <p className="text-xs text-neutral-700 mt-2 leading-relaxed">
+              Bạn vừa nhận được <strong>1 Kim Bài Miễn Tử (Lệnh Bài Miễn Uống)</strong> với tỉ lệ xuất hiện cực kỳ thấp!
+            </p>
+            <div className="mt-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 font-medium">
+              🛡️ Khi đến lượt bạn rút phải thử thách khó hoặc câu hỏi khó đỡ, hãy bấm nút <strong>&quot;DÙNG KIM BÀI MIỄN TỬ&quot;</strong> để thoát phạt 0 ngụm!
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowImmunityModal(false)}
+              className="mt-5 w-full py-3 rounded-2xl bg-primary hover:bg-neutral-800 text-on-primary font-bold text-xs shadow-md active:scale-95 transition-transform"
+            >
+              Nhận Kim Bài &amp; Tiếp Tục Cuộc Vui 🍻
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Question History Modal */}
       <QuestionHistoryModal

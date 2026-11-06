@@ -17,7 +17,6 @@ interface NotionLobbyViewProps {
   isHost?: boolean;
   onTotalCardsChange?: (count: number) => void;
   onStartGame?: () => void;
-  onSoloTest?: () => void;
   onLeaveRoom?: () => void;
   onOpenInvite?: () => void;
 }
@@ -31,7 +30,6 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
   isHost = true,
   onTotalCardsChange,
   onStartGame,
-  onSoloTest,
   onLeaveRoom,
   onOpenInvite,
 }) => {
@@ -43,6 +41,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
   const [isStarting, setIsStarting] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string>("");
   const [showToast, setShowToast] = useState<boolean>(false);
+  const [invitedUids, setInvitedUids] = useState<Record<string, boolean>>({});
 
   const inviteLink =
     typeof window !== "undefined"
@@ -51,6 +50,24 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
 
   // Only show real players who actually joined the room (no fake/mock players)
   const activePlayers: Player[] = players && players.length > 0 ? players : [];
+
+  // Lọc danh sách bạn bè đang online CHƯA có mặt trong bàn này để mời
+  const inviteableUsers = onlineUsers.filter((u) => {
+    if (currentUser?.uid && u.uid === currentUser.uid) return false;
+    if (
+      currentUser?.email &&
+      u.email &&
+      u.email.toLowerCase() === currentUser.email.toLowerCase()
+    ) {
+      return false;
+    }
+    const alreadyInRoom = activePlayers.some(
+      (p) =>
+        (p.email && u.email && p.email.toLowerCase() === u.email.toLowerCase()) ||
+        (p.uid && u.uid && p.uid === u.uid)
+    );
+    return !alreadyInRoom;
+  });
 
   const cardPresets = [
     { count: 20, label: "20 câu", desc: "~30 phút" },
@@ -111,13 +128,18 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
   const handleInviteOnlineUser = async (user: OnlineUser) => {
     sounds.playBeerClink();
 
-    // Gửi popup trực tiếp tới màn hình thiết bị của người chơi
-    if (user.uid && currentUser) {
-      await sendRoomInvite(user.uid, {
+    const targetUid =
+      user.uid ||
+      (user.email ? user.email.replace(/[^a-zA-Z0-9]/g, "_") : "");
+
+    // Gửi popup trực tiếp tới màn hình thiết bị của người chơi realtime
+    if (targetUid && currentUser) {
+      await sendRoomInvite(targetUid, {
         roomCode,
         fromName: currentUser.name || "Chủ Xị",
         fromAvatar: currentUser.avatar,
       });
+      setInvitedUids((prev) => ({ ...prev, [user.uid || targetUid]: true }));
       triggerToast(`🚀 Đã gửi lời mời trực tiếp tới màn hình của ${user.name}!`);
     } else {
       triggerToast(`🎉 Đang chuẩn bị link mời cho ${user.name}...`);
@@ -125,9 +147,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
 
     // Đồng thời sao chép link phòng làm dự phòng
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(inviteLink).then(() => {
-        // clipboard ready
-      });
+      navigator.clipboard.writeText(inviteLink).then(() => {});
     }
   };
 
@@ -155,7 +175,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
           </div>
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface font-label-sm text-label-sm shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span>
-            <span>4/8 chỗ</span>
+            <span>{activePlayers.length}/8 chỗ</span>
           </div>
         </div>
       </div>
@@ -411,41 +431,56 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
         </div>
       </div>
 
-      {/* Bạn Nhậu Đang Online Sẵn Sàng Nhập Tiệc */}
-      {onlineUsers.length > 0 && (
+      {/* Bạn Nhậu Đang Online Sẵn Sàng Nhập Tiệc (Hiện đầy đủ tất cả chiến hữu để mời) */}
+      {inviteableUsers.length > 0 && (
         <div className="bg-surface-container-lowest p-space-sm rounded-xl border border-surface-container-high space-y-2 shadow-xs">
           <div className="flex items-center justify-between px-1">
             <span className="font-label-md text-xs font-bold text-on-surface flex items-center gap-1.5 uppercase tracking-wide">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Bạn Nhậu Đang Online ({onlineUsers.length})</span>
+              <span>Bạn Nhậu Đang Online ({inviteableUsers.length} người)</span>
             </span>
-            <span className="text-[11px] text-secondary">Bấm để gửi link mời</span>
+            <span className="text-[11px] text-secondary">Bấm để mời realtime</span>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {onlineUsers.map((u) => (
-              <button
-                key={u.uid}
-                type="button"
-                onClick={() => handleInviteOnlineUser(u)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low hover:bg-surface-container border border-surface-container-high shrink-0 text-left active:scale-95 transition-transform"
-              >
-                <div className="w-6 h-6 rounded-full bg-surface-container-highest overflow-hidden text-[10px] font-bold flex items-center justify-center shrink-0">
-                  {u.avatar ? (
-                    <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
-                  ) : (
-                    u.name.charAt(0)
-                  )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {inviteableUsers.map((u) => {
+              const isInvited = Boolean(invitedUids[u.uid]);
+              return (
+                <div
+                  key={u.uid}
+                  className="flex items-center justify-between gap-2 p-2 rounded-lg bg-surface-container-low border border-surface-container-high"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden text-xs font-bold flex items-center justify-center shrink-0">
+                      {u.avatar ? (
+                        <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
+                      ) : (
+                        u.name.charAt(0)
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-body-sm text-xs font-semibold text-on-surface truncate block">
+                        {u.name}
+                      </span>
+                      <span className="text-[10px] text-secondary truncate block">
+                        🟢 Đang online
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleInviteOnlineUser(u)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 flex items-center gap-1 active:scale-95 cursor-pointer ${
+                      isInvited
+                        ? "bg-emerald-600 text-white"
+                        : "bg-primary text-on-primary hover:bg-neutral-800"
+                    }`}
+                  >
+                    <span>{isInvited ? "Đã Mời ✅" : "+ Mời Bàn"}</span>
+                  </button>
                 </div>
-                <div className="min-w-0 max-w-[90px]">
-                  <span className="font-body-sm text-xs font-semibold text-on-surface truncate block">
-                    {u.name}
-                  </span>
-                  <span className="text-[10px] text-primary font-medium block">
-                    + Mời vào bàn
-                  </span>
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -491,26 +526,15 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
           )}
         </button>
 
-        {/* Secondary Row Actions */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* Secondary Row Actions (Đã bỏ chế độ chơi với Robot) */}
+        <div>
           <button
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md hover:bg-surface-dim active:scale-[0.98] transition-all"
-            onClick={() => {
-              triggerToast("Đã chuyển sang chế độ chơi thử 1 mình!");
-              if (onSoloTest) onSoloTest();
-            }}
-            type="button"
-          >
-            <span className="material-symbols-outlined text-[16px]">smart_toy</span>
-            <span>Chơi Thử Solo</span>
-          </button>
-          <button
-            className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-surface-container-low text-error font-label-md text-label-md hover:bg-error-container hover:text-on-error-container active:scale-[0.98] transition-all"
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg bg-surface-container-low text-error font-label-md text-label-md hover:bg-error-container hover:text-on-error-container active:scale-[0.98] transition-all cursor-pointer border border-surface-container-high"
             onClick={handleConfirmLeave}
             type="button"
           >
             <span className="material-symbols-outlined text-[16px]">logout</span>
-            <span>Rời Phòng</span>
+            <span>Rời Bàn Nhậu</span>
           </button>
         </div>
       </div>

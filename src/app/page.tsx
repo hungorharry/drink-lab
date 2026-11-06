@@ -382,7 +382,6 @@ export default function Home() {
             onTotalCardsChange={handleChangeTotalCards}
             onStartGame={handleStartGame}
             onOpenInvite={() => setCurrentScreen("share")}
-            onSoloTest={handleStartGame}
             onLeaveRoom={handleLeaveRoom}
           />
         )}
