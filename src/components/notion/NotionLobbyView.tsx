@@ -75,7 +75,8 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
     { count: 100, label: "100 câu", desc: "~2 tiếng" },
     { count: 200, label: "200 câu", desc: "~3-4 tiếng" },
     { count: 500, label: "500 câu", desc: "Thâu đêm" },
-    { count: 1000, label: "1000 câu", desc: "Full kho" },
+    { count: 1000, label: "1000 câu", desc: "Đại tiệc" },
+    { count: 2000, label: "2000 câu", desc: "Cực Đỉnh" },
   ];
 
   const handleSelectCards = (count: number) => {
@@ -249,11 +250,11 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
           </span>
         </div>
         <p className="font-body-sm text-body-sm text-secondary">
-          Kho game có sẵn <strong>1000 câu</strong>. Hãy chọn số lượng thẻ phù hợp để cuộc vui kéo dài 2-3 tiếng không lo hết bài:
+          Kho game sở hữu <strong>2000 câu hỏi hoàn toàn ĐỘC NHẤT</strong> (Không trùng lặp, đảm bảo cuộc chơi luôn mới mẻ không bị nhạt). Hãy chọn số lượng thẻ phù hợp:
         </p>
 
         {/* Quick Presets Grid */}
-        <div className="grid grid-cols-3 gap-1.5 pt-1">
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 pt-1">
           {cardPresets.map((preset) => (
             <button
               key={preset.count}

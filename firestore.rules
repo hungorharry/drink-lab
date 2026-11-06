@@ -16,9 +16,9 @@ service cloud.firestore {
     //   - players: list of maps (required, 1-50 player entries)
     //   - hostEmail: string (optional, up to 100 chars)
     //   - hostName: string (optional, up to 100 chars)
-    //   - totalCards: int/number (optional, 0 to 1000)
-    //   - deck: list of maps (optional, up to 1000 card items)
-    //   - currentCardIndex: int/number (optional, 0 to 1000)
+    //   - totalCards: int/number (optional, 0 to 2500)
+    //   - deck: list of maps (optional, up to 2500 card items)
+    //   - currentCardIndex: int/number (optional, 0 to 2500)
     //   - currentTurnIdx: int/number (optional, 0 to 100)
     //   - isFlipped: bool (optional)
     //   - beerConsumed: number (optional, >= 0 and <= 100000)
@@ -166,9 +166,9 @@ service cloud.firestore {
         // Optional field validation with strict types & size bounds (DoS/resource exhaustion prevention)
         (!('hostEmail' in data) || (data.hostEmail is string && data.hostEmail.size() <= 100)) &&
         (!('hostName' in data) || (data.hostName is string && data.hostName.size() <= 100)) &&
-        (!('totalCards' in data) || (data.totalCards is number && data.totalCards >= 0 && data.totalCards <= 1000)) &&
-        (!('deck' in data) || (data.deck is list && data.deck.size() <= 1000)) &&
-        (!('currentCardIndex' in data) || (data.currentCardIndex is number && data.currentCardIndex >= 0 && data.currentCardIndex <= 1000)) &&
+        (!('totalCards' in data) || (data.totalCards is number && data.totalCards >= 0 && data.totalCards <= 2500)) &&
+        (!('deck' in data) || (data.deck is list && data.deck.size() <= 2500)) &&
+        (!('currentCardIndex' in data) || (data.currentCardIndex is number && data.currentCardIndex >= 0 && data.currentCardIndex <= 2500)) &&
         (!('currentTurnIdx' in data) || (data.currentTurnIdx is number && data.currentTurnIdx >= 0 && data.currentTurnIdx <= 100)) &&
         (!('isFlipped' in data) || (data.isFlipped is bool)) &&
         (!('beerConsumed' in data) || (data.beerConsumed is number && data.beerConsumed >= 0 && data.beerConsumed <= 100000)) &&

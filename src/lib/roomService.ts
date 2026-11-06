@@ -54,14 +54,24 @@ const ALL_CARDS: DrinkingCard[] = (rawQuestions as any[]).map((q: any) => ({
   badgeBg: q.badgeBg || "bg-primary text-on-primary",
 }));
 
-// Fisher-Yates unbiased shuffle
+// Fisher-Yates unbiased shuffle với cơ chế bảo đảm ZERO lặp câu hỏi 100%
 export function getShuffledDeck(count: number): DrinkingCard[] {
   const pool = [...ALL_CARDS];
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return pool.slice(0, Math.min(count, pool.length));
+  const result: DrinkingCard[] = [];
+  const seenContents = new Set<string>();
+  for (const card of pool) {
+    const key = card.description.trim().toLowerCase();
+    if (!seenContents.has(key)) {
+      seenContents.add(key);
+      result.push(card);
+      if (result.length >= count) break;
+    }
+  }
+  return result;
 }
 
 // Room code generator
