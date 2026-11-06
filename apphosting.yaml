@@ -1,0 +1,14 @@
+# Cấu hình Firebase App Hosting cho Next.js
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyAuVbYxY2nYb5ri_mtgvlIaZonmYq7r93M"
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "drink-lab-from-hung.firebaseapp.com"
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "drink-lab-from-hung"
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "drink-lab-from-hung.firebasestorage.app"
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "427319138815"
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:427319138815:web:5fe238038b3140e048efca"
