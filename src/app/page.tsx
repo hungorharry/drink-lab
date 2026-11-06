@@ -8,7 +8,14 @@ import { NotionAuthView, GoogleUser } from "@/components/notion/NotionAuthView";
 import { NotionShareView } from "@/components/notion/NotionShareView";
 import { NotionLobbyView } from "@/components/notion/NotionLobbyView";
 import { NotionInteractivePlay } from "@/components/notion/NotionInteractivePlay";
-import { RoomState } from "@/app/api/room/route";
+import {
+  createRoom,
+  joinRoom,
+  subscribeToRoom,
+  updateRoom,
+  getShuffledDeck,
+  RoomState,
+} from "@/lib/roomService";
 
 export default function Home() {
   // Giao diện bắt đầu từ màn hình xác thực Google
@@ -30,108 +37,64 @@ export default function Home() {
         setRoomCode(cleanCode);
         setIsInvited(true);
         setCurrentScreen("auth");
-
-        // Thử fetch thông tin phòng trước
-        fetch(`/api/room?code=${cleanCode}`)
-          .then((res) => res.json())
-          .then((data) => {
-            if (data.success && data.room) {
-              setRoomData(data.room);
-              setTotalCards(data.room.totalCards || 100);
-            }
-          })
-          .catch(() => {});
       }
     }
   }, []);
 
-  // 2. Định kỳ đồng bộ trạng thái phòng (Sync Polling mỗi 2.5s) khi đã vào phòng
+  // 2. Real-time listener qua Cloud Firestore (onSnapshot)
   useEffect(() => {
-    if (currentScreen === "auth" || !roomCode) return;
+    if (!roomCode) return;
 
-    let isMounted = true;
-    const syncRoom = async () => {
-      try {
-        const res = await fetch(`/api/room?code=${roomCode}`);
-        const data = await res.json();
-        if (isMounted && data.success && data.room) {
-          setRoomData(data.room);
-          setTotalCards(data.room.totalCards || 100);
+    const unsubscribe = subscribeToRoom(roomCode, (updatedRoom) => {
+      setRoomData(updatedRoom);
+      setTotalCards(updatedRoom.totalCards || 100);
 
-          // Tự động chuyển màn hình khi Chủ Phòng bắt đầu ván đấu
-          if (data.room.status === "playing" && currentScreen === "lobby") {
-            setCurrentScreen("spectator");
-          } else if (data.room.status === "summary" && currentScreen === "spectator") {
-            setCurrentScreen("summary");
-          } else if (data.room.status === "lobby" && currentScreen === "summary") {
-            setCurrentScreen("lobby");
-          }
-        }
-      } catch (err) {
-        // Fallback im lặng nếu offline
+      // Tự động chuyển màn hình khi Chủ Phòng bắt đầu ván đấu
+      if (updatedRoom.status === "playing" && currentScreen === "lobby") {
+        setCurrentScreen("spectator");
+      } else if (updatedRoom.status === "summary" && currentScreen === "spectator") {
+        setCurrentScreen("summary");
+      } else if (updatedRoom.status === "lobby" && currentScreen === "summary") {
+        setCurrentScreen("lobby");
       }
-    };
+    });
 
-    syncRoom();
-    const interval = setInterval(syncRoom, 2500);
     return () => {
-      isMounted = false;
-      clearInterval(interval);
+      unsubscribe();
     };
   }, [roomCode, currentScreen]);
 
-  // 3. Xử lý Tạo Phòng Mới (Chủ Xị / Host)
+  // 3. Xử lý Tạo Phòng Mới (Chủ Xị / Host lưu trực tiếp vào Cloud Firestore)
   const handleCreateRoom = async (user: GoogleUser) => {
     try {
-      const res = await fetch("/api/room", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create", user, totalCards }),
-      });
-      const data = await res.json();
-      if (data.success && data.roomCode) {
-        setRoomCode(data.roomCode);
-        setRoomData(data.room);
-        setCurrentUser(user);
-        setIsHost(true);
-        setCurrentScreen("lobby");
-        return;
-      }
+      const { roomCode: newCode, room } = await createRoom(user, totalCards);
+      setRoomCode(newCode);
+      setRoomData(room);
+      setCurrentUser(user);
+      setIsHost(true);
+      setCurrentScreen("lobby");
     } catch (e) {
       console.error("Lỗi tạo phòng:", e);
+      const fallbackCode = `SIP-${Math.floor(1000 + Math.random() * 9000)}`;
+      setRoomCode(fallbackCode);
+      setCurrentUser(user);
+      setIsHost(true);
+      setCurrentScreen("lobby");
     }
-
-    // Fallback nếu server bận
-    const fallbackCode = `SIP-${Math.floor(1000 + Math.random() * 9000)}`;
-    setRoomCode(fallbackCode);
-    setCurrentUser(user);
-    setIsHost(true);
-    setCurrentScreen("lobby");
   };
 
-  // 4. Xử lý Tham Gia Phòng (Guest hoặc Bạn Bè)
+  // 4. Xử lý Tham Gia Phòng (Guest hoặc Bạn Bè lưu vào Cloud Firestore)
   const handleJoinRoom = async (code: string, nickname: string, tolerance: string, user: GoogleUser) => {
     const cleanCode = (code || roomCode || "ALCH88").toUpperCase().trim();
     try {
-      const res = await fetch("/api/room", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "join",
-          roomCode: cleanCode,
-          user,
-          nickname,
-          tolerance,
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.room) {
-        setRoomCode(data.room.code);
-        setRoomData(data.room);
+      const result = await joinRoom(cleanCode, nickname, tolerance, user);
+      if (result.success && result.room) {
+        setRoomCode(result.room.code);
+        setRoomData(result.room);
         setCurrentUser(user);
-        const host = data.room.players?.[0]?.email === user.email;
+        const host = result.room.players?.[0]?.email === user.email;
         setIsHost(host);
-        setCurrentScreen(data.room.status === "playing" ? "spectator" : "lobby");
+        setCurrentScreen(result.room.status === "playing" ? "spectator" : "lobby");
         return;
       }
     } catch (e) {
@@ -147,60 +110,34 @@ export default function Home() {
   // 5. Thay đổi tổng số câu hỏi (Host Only)
   const handleChangeTotalCards = async (count: number) => {
     setTotalCards(count);
-    try {
-      const res = await fetch("/api/room", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "set_total_cards", roomCode, totalCards: count }),
-      });
-      const data = await res.json();
-      if (data.success && data.room) {
-        setRoomData(data.room);
-      }
-    } catch {}
+    const newDeck = getShuffledDeck(count);
+    await updateRoom(roomCode, { totalCards: count, deck: newDeck });
   };
 
   // 6. Bắt đầu ván chơi
   const handleStartGame = async () => {
-    try {
-      const res = await fetch("/api/room", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "start_game", roomCode }),
-      });
-      const data = await res.json();
-      if (data.success && data.room) {
-        setRoomData(data.room);
-      }
-    } catch {}
+    await updateRoom(roomCode, { status: "playing" });
     setCurrentScreen("spectator");
   };
 
   // 7. Kết thúc ván
   const handleFinishGame = async () => {
-    try {
-      await fetch("/api/room", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "finish_game", roomCode }),
-      });
-    } catch {}
+    await updateRoom(roomCode, { status: "summary" });
     setCurrentScreen("summary");
   };
 
   // 8. Chơi lại
   const handleReplayGame = async () => {
-    try {
-      const res = await fetch("/api/room", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "replay", roomCode }),
-      });
-      const data = await res.json();
-      if (data.success && data.room) {
-        setRoomData(data.room);
-      }
-    } catch {}
+    const newDeck = getShuffledDeck(totalCards);
+    await updateRoom(roomCode, {
+      status: "lobby",
+      deck: newDeck,
+      currentCardIndex: 0,
+      isFlipped: false,
+      history: [],
+      reactions: [],
+      beerConsumed: 0,
+    });
     setCurrentScreen("lobby");
   };
 

@@ -18,6 +18,8 @@ export interface Player {
   color: string;
   email?: string;
   avatar?: string;
+  tolerance?: string;
+  drinksCount?: number;
 }
 
 export interface CardHistoryItem {

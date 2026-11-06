@@ -35,3 +35,5 @@ yarn-error.log*
 next-env.d.ts
 
 .npm-cache/
+.firebase/
+src/_api_backup/

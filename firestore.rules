@@ -1,0 +1,164 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: rooms
+    // Document ID: {roomCode} (string, 1-32 characters, e.g. "SIP-ABCD", "ALCH88")
+    //
+    // Fields:
+    //   - code: string (required, 1-32 chars, immutable, matches document ID)
+    //   - status: string (required, allowed: 'lobby' | 'playing' | 'summary')
+    //   - players: list of maps (required, 1-50 player entries)
+    //   - hostEmail: string (optional, up to 100 chars)
+    //   - hostName: string (optional, up to 100 chars)
+    //   - totalCards: int/number (optional, 0 to 1000)
+    //   - deck: list of maps (optional, up to 1000 card items)
+    //   - currentCardIndex: int/number (optional, 0 to 1000)
+    //   - currentTurnIdx: int/number (optional, 0 to 100)
+    //   - isFlipped: bool (optional)
+    //   - beerConsumed: number (optional, >= 0 and <= 100000)
+    //   - history: list of maps (optional, up to 1000 history items)
+    //   - reactions: list of maps (optional, up to 200 items)
+    //   - updatedAt: number or timestamp (optional)
+    //
+    // Realtime Gameplay Aliases (supported for multiplayer integration sync):
+    //   - currentTurnIndex: int/number (optional, 0 to 100)
+    //   - isFlipping: bool (optional)
+    //   - currentCard: map (optional, currently revealed card object)
+    //   - drawnAt: number or timestamp (optional)
+    //   - round: int/number (optional, 0 to 1000)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated via Firebase Auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Validate room code path format (string, 1-32 characters)
+    function isValidRoomCode(roomCode) {
+      return roomCode is string &&
+             roomCode.size() > 0 &&
+             roomCode.size() <= 32;
+    }
+
+    // Check if the required fields exist in the incoming document
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    // Check that no arbitrary or unexpected fields are added (Strict Schema)
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    // Check if the user is the authenticated room host
+    function isRoomHost() {
+      return isAuthenticated() && (
+        (('hostEmail' in resource.data) &&
+         resource.data.hostEmail is string &&
+         resource.data.hostEmail != '' &&
+         request.auth.token.email == resource.data.hostEmail) ||
+        (('players' in resource.data) &&
+         resource.data.players is list &&
+         resource.data.players.size() > 0 &&
+         resource.data.players[0] is map &&
+         ('uid' in resource.data.players[0]) &&
+         resource.data.players[0].uid == request.auth.uid)
+      );
+    }
+
+    // ===============================================================
+    // Domain Validator: Room State
+    // ===============================================================
+
+    function isValidRoom(data, roomCode) {
+      return hasRequiredFields(data, ['code', 'status', 'players']) &&
+        hasOnlyAllowedFields(data, [
+          'code',
+          'status',
+          'players',
+          'hostEmail',
+          'hostName',
+          'totalCards',
+          'deck',
+          'currentCardIndex',
+          'currentTurnIdx',
+          'isFlipped',
+          'beerConsumed',
+          'history',
+          'reactions',
+          'updatedAt',
+          'currentTurnIndex',
+          'isFlipping',
+          'currentCard',
+          'drawnAt',
+          'round'
+        ]) &&
+        // Required field validation
+        data.code is string &&
+        data.code == roomCode &&
+        data.code.size() <= 32 &&
+        data.status is string &&
+        data.status in ['lobby', 'playing', 'summary'] &&
+        data.players is list &&
+        data.players.size() >= 1 &&
+        data.players.size() <= 50 &&
+
+        // Optional field validation with strict types & size bounds (DoS/resource exhaustion prevention)
+        (!('hostEmail' in data) || (data.hostEmail is string && data.hostEmail.size() <= 100)) &&
+        (!('hostName' in data) || (data.hostName is string && data.hostName.size() <= 100)) &&
+        (!('totalCards' in data) || (data.totalCards is number && data.totalCards >= 0 && data.totalCards <= 1000)) &&
+        (!('deck' in data) || (data.deck is list && data.deck.size() <= 1000)) &&
+        (!('currentCardIndex' in data) || (data.currentCardIndex is number && data.currentCardIndex >= 0 && data.currentCardIndex <= 1000)) &&
+        (!('currentTurnIdx' in data) || (data.currentTurnIdx is number && data.currentTurnIdx >= 0 && data.currentTurnIdx <= 100)) &&
+        (!('isFlipped' in data) || (data.isFlipped is bool)) &&
+        (!('beerConsumed' in data) || (data.beerConsumed is number && data.beerConsumed >= 0 && data.beerConsumed <= 100000)) &&
+        (!('history' in data) || (data.history is list && data.history.size() <= 1000)) &&
+        (!('reactions' in data) || (data.reactions is list && data.reactions.size() <= 200)) &&
+        (!('updatedAt' in data) || (data.updatedAt is number || data.updatedAt is timestamp)) &&
+        (!('currentTurnIndex' in data) || (data.currentTurnIndex is number && data.currentTurnIndex >= 0 && data.currentTurnIndex <= 100)) &&
+        (!('isFlipping' in data) || (data.isFlipping is bool)) &&
+        (!('currentCard' in data) || (data.currentCard is map)) &&
+        (!('drawnAt' in data) || (data.drawnAt is number || data.drawnAt is timestamp)) &&
+        (!('round' in data) || (data.round is number && data.round >= 0 && data.round <= 1000));
+    }
+
+    // ===============================================================
+    // Rules: Rooms Collection
+    // ===============================================================
+
+    match /rooms/{roomCode} {
+      // Allow read (get/listen) for guests and authenticated players using the room code
+      allow read: if isValidRoomCode(roomCode);
+
+      // Allow room creation with schema and data validation
+      allow create: if isValidRoomCode(roomCode) &&
+                       isValidRoom(request.resource.data, roomCode);
+
+      // Allow room state updates with validation and immutable code preservation
+      allow update: if isValidRoomCode(roomCode) &&
+                       isValidRoom(request.resource.data, roomCode) &&
+                       request.resource.data.code == resource.data.code;
+
+      // Restrict room deletion to the authenticated host only
+      allow delete: if isRoomHost();
+    }
+
+    // ===============================================================
+    // Default Deny Rule for All Other Collections
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
