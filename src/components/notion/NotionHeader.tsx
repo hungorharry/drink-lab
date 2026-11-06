@@ -66,9 +66,9 @@ export const NotionHeader: React.FC<NotionHeaderProps> = ({
             title={currentUser ? currentUser.name : "Tài khoản"}
             className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-outline/20 active:scale-95 transition-transform"
           >
-            {currentUser?.picture ? (
+            {currentUser?.avatar ? (
               <img
-                src={currentUser.picture}
+                src={currentUser.avatar}
                 alt={currentUser.name}
                 className="w-full h-full object-cover"
               />

@@ -42,7 +42,8 @@ function rsGeneratorPoly(degree: number): Uint8Array {
 function rsComputeRemainder(data: Uint8Array, eccLen: number): Uint8Array {
   const gen = rsGeneratorPoly(eccLen);
   const remainder = new Uint8Array(eccLen);
-  for (const byte of data) {
+  for (let d = 0; d < data.length; d++) {
+    const byte = data[d];
     const factor = byte ^ remainder[0];
     for (let i = 0; i < eccLen - 1; i++) {
       remainder[i] = remainder[i + 1] ^ gfMul(gen[eccLen - 1 - i], factor);
@@ -209,8 +210,8 @@ export function generateQrMatrix(text: string): QrMatrix {
   // Character count: 8 bits for ver 1-9
   pushBits(dataLen, 8);
   // Data bytes
-  for (const b of utf8Bytes) {
-    pushBits(b, 8);
+  for (let i = 0; i < utf8Bytes.length; i++) {
+    pushBits(utf8Bytes[i], 8);
   }
 
   // Terminator (up to 4 zeroes)

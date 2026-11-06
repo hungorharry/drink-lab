@@ -10,6 +10,7 @@ import {
   onAuthStateChanged,
   User,
 } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Firebase configuration from environment variables (.env.local)
 const firebaseConfig = {
@@ -42,6 +43,7 @@ export const app =
       );
 
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: "select_account" });
 
