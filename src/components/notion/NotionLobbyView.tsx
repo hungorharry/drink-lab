@@ -43,13 +43,8 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
       ? `${window.location.origin}/?room=${roomCode}`
       : `https://sipcraft.app/?room=${roomCode}`;
 
-  // Default fallback players if none passed
-  const activePlayers: Player[] = players && players.length > 0 ? players : [
-    { id: 0, uid: "usr_host", name: "Chủ Phòng", initial: "CP", isHost: true, color: "bg-amber-600" },
-    { id: 1, uid: "usr_maianh", name: "Mai Anh", initial: "MA", isHost: false, color: "bg-sky-600" },
-    { id: 2, uid: "usr_hai", name: "Tuấn Hải", initial: "TH", isHost: false, color: "bg-emerald-600" },
-    { id: 3, uid: "usr_trang", name: "Minh Trang", initial: "MT", isHost: false, color: "bg-purple-600" },
-  ];
+  // Only show real players who actually joined the room (no fake/mock players)
+  const activePlayers: Player[] = players && players.length > 0 ? players : [];
 
   const cardPresets = [
     { count: 20, label: "20 câu", desc: "~30 phút" },
@@ -316,47 +311,57 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
 
         {/* Grid Cards (2 columns on mobile) */}
         <div className="grid grid-cols-2 gap-space-sm">
-          {activePlayers.map((player) => (
-            <div
-              key={player.id}
-              className="group relative flex flex-col justify-between p-space-sm rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between gap-1 mb-2">
-                <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-headline-sm text-headline-sm select-none overflow-hidden">
-                  {player.avatar ? (
-                    <img src={player.avatar} alt={player.name} className="w-full h-full object-cover" />
+          {activePlayers.length === 0 ? (
+            <div className="col-span-2 p-4 rounded-xl bg-surface-container-low border border-surface-container-high text-center">
+              <span className="text-2xl block mb-1">🍻</span>
+              <p className="font-body-sm text-on-surface font-semibold">Chưa có ai trong bàn nhậu</p>
+              <p className="font-label-sm text-secondary text-xs mt-0.5">
+                Hãy chia sẻ mã phòng hoặc quét mã QR bên dưới để bạn bè vào bàn!
+              </p>
+            </div>
+          ) : (
+            activePlayers.map((player) => (
+              <div
+                key={player.id}
+                className="group relative flex flex-col justify-between p-space-sm rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between gap-1 mb-2">
+                  <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center font-bold text-on-surface font-headline-sm text-headline-sm select-none overflow-hidden">
+                    {player.avatar ? (
+                      <img src={player.avatar} alt={player.name} className="w-full h-full object-cover" />
+                    ) : (
+                      player.initial || player.name.charAt(0)
+                    )}
+                  </div>
+                  {player.isHost ? (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary text-on-primary font-label-sm text-label-sm">
+                      <span>👑</span>
+                      <span>Host</span>
+                    </span>
                   ) : (
-                    player.initial || player.name.charAt(0)
+                    <span className="text-base select-none">🍻</span>
                   )}
                 </div>
-                {player.isHost ? (
-                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-primary text-on-primary font-label-sm text-label-sm">
-                    <span>👑</span>
-                    <span>Host</span>
-                  </span>
-                ) : (
-                  <span className="text-base select-none">🍻</span>
-                )}
-              </div>
-              <div className="min-w-0 mb-3">
-                <div className="font-body-md text-body-md font-semibold text-on-surface truncate">
-                  {player.name}
+                <div className="min-w-0 mb-3">
+                  <div className="font-body-md text-body-md font-semibold text-on-surface truncate">
+                    {player.name}
+                  </div>
+                  <div className="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm mt-0.5">
+                    <span className="material-symbols-outlined text-[13px] text-secondary">
+                      sports_bar
+                    </span>
+                    <span className="truncate">Sẵn sàng nhập tiệc</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm mt-0.5">
-                  <span className="material-symbols-outlined text-[13px] text-secondary">
-                    sports_bar
+                <div className="pt-2 flex items-center justify-between bg-surface-container-low px-2 py-1 rounded-lg">
+                  <span className="font-label-sm text-label-sm text-on-surface font-medium">
+                    Đã vào bàn
                   </span>
-                  <span className="truncate">Sẵn sàng nhập tiệc</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
                 </div>
               </div>
-              <div className="pt-2 flex items-center justify-between bg-surface-container-low px-2 py-1 rounded-lg">
-                <span className="font-label-sm text-label-sm text-on-surface font-medium">
-                  Đã vào bàn
-                </span>
-                <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
 
           {/* Add Player Slot */}
           <button
@@ -385,7 +390,9 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
             Chỉ Host mới có thể ấn bắt đầu vòng chơi {selectedCards} câu.
           </span>
         </div>
-        <span className="font-label-sm text-label-sm text-secondary shrink-0">Ready 4/4</span>
+        <span className="font-label-sm text-label-sm text-secondary shrink-0">
+          Ready {activePlayers.length}/8
+        </span>
       </div>
 
       {/* Action Controls */}

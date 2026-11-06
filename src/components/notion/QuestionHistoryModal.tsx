@@ -13,7 +13,7 @@ interface QuestionHistoryModalProps {
 export const QuestionHistoryModal: React.FC<QuestionHistoryModalProps> = ({
   isOpen,
   onClose,
-  history = SAMPLE_CARD_HISTORY,
+  history = [],
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -121,9 +121,12 @@ export const QuestionHistoryModal: React.FC<QuestionHistoryModalProps> = ({
           {filteredHistory.length === 0 ? (
             <div className="text-center py-8 text-secondary font-body-sm">
               <span className="material-symbols-outlined text-3xl mb-1 opacity-60">
-                search_off
+                history
               </span>
-              <p>Không tìm thấy câu hỏi nào phù hợp.</p>
+              <p className="font-medium text-on-surface">Chưa có lượt bốc thẻ nào</p>
+              <p className="text-xs text-secondary mt-0.5">
+                Lịch sử các câu hỏi và ngụm bia phạt sẽ được lưu tự động tại đây khi chơi!
+              </p>
             </div>
           ) : (
             filteredHistory.map((item) => (

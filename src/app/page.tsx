@@ -20,7 +20,7 @@ import {
 export default function Home() {
   // Giao diện bắt đầu từ màn hình xác thực Google
   const [currentScreen, setCurrentScreen] = useState<NotionScreen>("auth");
-  const [roomCode, setRoomCode] = useState<string>("ALCH88");
+  const [roomCode, setRoomCode] = useState<string>("");
   const [totalCards, setTotalCards] = useState<number>(100);
   const [currentUser, setCurrentUser] = useState<GoogleUser | null>(null);
   const [isHost, setIsHost] = useState<boolean>(true);
@@ -85,7 +85,8 @@ export default function Home() {
 
   // 4. Xử lý Tham Gia Phòng (Guest hoặc Bạn Bè lưu vào Cloud Firestore)
   const handleJoinRoom = async (code: string, nickname: string, tolerance: string, user: GoogleUser) => {
-    const cleanCode = (code || roomCode || "ALCH88").toUpperCase().trim();
+    const cleanCode = (code || roomCode).toUpperCase().trim();
+    if (!cleanCode) return;
     try {
       const result = await joinRoom(cleanCode, nickname, tolerance, user);
       if (result.success && result.room) {
@@ -144,7 +145,7 @@ export default function Home() {
   const memberCountText =
     currentScreen === "auth"
       ? "Sẵn sàng"
-      : `${roomData?.players?.length || 4}/8`;
+      : `${roomData?.players?.length || 0}/8`;
 
   return (
     <div className="bg-surface text-on-surface font-body-md text-body-md antialiased min-h-screen min-h-[100dvh] flex flex-col w-full max-w-[440px] mx-auto shadow-sm relative overflow-x-hidden">
@@ -187,6 +188,7 @@ export default function Home() {
         {currentScreen === "share" && (
           <NotionShareView
             roomCode={roomCode}
+            players={roomData?.players}
             onBackToLobby={() => setCurrentScreen("lobby")}
           />
         )}
@@ -196,8 +198,9 @@ export default function Home() {
           <NotionInteractivePlay
             roomCode={roomCode}
             totalCards={totalCards}
-            initialDeck={roomData?.deck}
-            initialPlayers={roomData?.players}
+            roomData={roomData}
+            currentUser={currentUser}
+            isHost={isHost}
             onFinishGame={handleFinishGame}
             onGoToLobby={() => setCurrentScreen("lobby")}
           />
@@ -206,7 +209,11 @@ export default function Home() {
         {/* Step 5: Tổng kết ván & Bảng Phong Thần */}
         {currentScreen === "summary" && (
           <NotionSummaryView
+            roomCode={roomCode}
             totalCards={totalCards}
+            players={roomData?.players}
+            beerConsumed={roomData?.beerConsumed}
+            history={roomData?.history}
             onReplay={handleReplayGame}
             onLeave={() => setCurrentScreen("auth")}
           />

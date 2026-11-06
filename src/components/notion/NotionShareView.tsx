@@ -3,14 +3,17 @@
 import React, { useState } from "react";
 import { QuestionHistoryModal } from "./QuestionHistoryModal";
 import { DynamicQRCode } from "./DynamicQRCode";
+import { Player } from "@/types/game";
 
 interface NotionShareViewProps {
   roomCode?: string;
+  players?: Player[];
   onBackToLobby?: () => void;
 }
 
 export const NotionShareView: React.FC<NotionShareViewProps> = ({
   roomCode = "ALCH88",
+  players = [],
   onBackToLobby,
 }) => {
   const [copyCodeText, setCopyCodeText] = useState<string>("Sao chép mã");
@@ -346,74 +349,42 @@ export const NotionShareView: React.FC<NotionShareViewProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          {/* Member 1 (Host) */}
-          <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-label-sm shrink-0">
-                N
-              </div>
-              <div className="truncate">
-                <span className="font-body-sm text-body-sm font-semibold text-on-surface">
-                  Nam
+          {players.length === 0 ? (
+            <div className="p-3 rounded-lg bg-surface-container-low text-center text-secondary font-label-sm">
+              Chưa có bạn nhậu nào vào bàn. Hãy chia sẻ link hoặc mã QR!
+            </div>
+          ) : (
+            players.map((p, idx) => (
+              <div
+                key={p.id ?? idx}
+                className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-7 h-7 rounded-full ${p.isHost ? "bg-primary text-on-primary" : "bg-surface-variant text-on-surface"} flex items-center justify-center font-bold text-label-sm shrink-0 overflow-hidden`}>
+                    {p.avatar ? (
+                      <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      p.initial || p.name.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="truncate">
+                    <span className="font-body-sm text-body-sm font-semibold text-on-surface">
+                      {p.name}
+                    </span>
+                    {p.isHost && (
+                      <span className="text-secondary font-label-sm text-label-sm ml-1.5">
+                        (Chủ Bàn)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className="bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  <span>Đã vào</span>
                 </span>
-                <span className="text-secondary font-label-sm text-label-sm ml-1.5">
-                  (Chủ Bàn)
-                </span>
               </div>
-            </div>
-            <span className="bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-              <span>Đã vào</span>
-            </span>
-          </div>
-
-          {/* Member 2 */}
-          <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-surface-variant text-on-surface flex items-center justify-center font-bold text-label-sm shrink-0">
-                M
-              </div>
-              <span className="font-body-sm text-body-sm font-medium text-on-surface truncate">
-                Mai Anh
-              </span>
-            </div>
-            <span className="bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-              <span>Đã vào</span>
-            </span>
-          </div>
-
-          {/* Member 3 */}
-          <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-surface-variant text-on-surface flex items-center justify-center font-bold text-label-sm shrink-0">
-                H
-              </div>
-              <span className="font-body-sm text-body-sm font-medium text-on-surface truncate">
-                Tuấn Hải
-              </span>
-            </div>
-            <span className="bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-              <span>Đã vào</span>
-            </span>
-          </div>
-
-          {/* Member 4 */}
-          <div className="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-surface-variant text-on-surface flex items-center justify-center font-bold text-label-sm shrink-0">
-                T
-              </div>
-              <span className="font-body-sm text-body-sm font-medium text-on-surface truncate">
-                Minh Trang
-              </span>
-            </div>
-            <span className="bg-surface-container-highest text-on-surface font-label-sm text-label-sm px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-              <span>Đã vào</span>
-            </span>
-          </div>
+            ))
+          )}
         </div>
       </div>
 

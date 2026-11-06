@@ -19,7 +19,7 @@ interface NotionAuthViewProps {
 }
 
 export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
-  initialRoomCode = "ALCH88",
+  initialRoomCode = "",
   isInvited = false,
   onJoinRoom,
   onCreateRoom,
@@ -35,9 +35,9 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
   const [emailInput, setEmailInput] = useState<string>("");
   const [passwordInput, setPasswordInput] = useState<string>("");
 
-  const [playerName, setPlayerName] = useState<string>("Hải Đếm Ngụm");
+  const [playerName, setPlayerName] = useState<string>("");
   const [tolerance, setTolerance] = useState<string>("toi-ben");
-  const [roomCode, setRoomCode] = useState<string>(initialRoomCode);
+  const [roomCode, setRoomCode] = useState<string>(initialRoomCode || "");
   const [toastMessage, setToastMessage] = useState<string>("");
   const [showToast, setShowToast] = useState<boolean>(false);
 
@@ -190,12 +190,16 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
 
   const handleJoin = () => {
     if (!googleUser) {
-      triggerToast("🔒 Bắt buộc đăng nhập Google trước khi vào bàn nhậu!");
+      triggerToast("🔒 Bắt buộc đăng nhập Google hoặc Email trước khi vào bàn nhậu!");
       setIsGoogleModalOpen(true);
       return;
     }
+    const code = roomCode.trim().toUpperCase();
+    if (!code) {
+      triggerToast("⚠️ Vui lòng nhập mã phòng (ví dụ: SIP-1234) hoặc quét mã QR!");
+      return;
+    }
     sounds.playBeerClink();
-    const code = roomCode.trim() || "ALCH88";
     const name = playerName.trim() || googleUser.name;
     triggerToast(`🎉 Đang kết nối bàn [${code}] với danh tính "${name}"...`);
     if (onJoinRoom) {
@@ -699,54 +703,6 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
         </div>
       </div>
 
-      {/* Bàn đang mở gần bạn */}
-      <div className="bg-surface-container-low rounded-xl p-3 shadow-sm border border-surface-container-high">
-        <div className="flex items-center justify-between mb-2">
-          <span className="font-label-sm text-secondary font-semibold uppercase tracking-wider flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px]">local_fire_department</span>
-            <span>Bàn đang chơi gần bạn</span>
-          </span>
-          <span className="font-label-sm text-secondary">2 phòng mở</span>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div
-            className="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high transition-colors cursor-pointer border border-surface-container-high/60"
-            onClick={() => quickFillRoom("BKDRNK")}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="font-code-inline font-bold bg-surface-container px-1.5 py-0.5 rounded text-xs">
-                # BKDRNK
-              </span>
-              <span className="font-body-sm text-on-surface truncate font-medium">
-                Bách Khoa Không Say Không Về (100 câu)
-              </span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0 text-secondary font-label-sm">
-              <span className="material-symbols-outlined text-[14px]">group</span>
-              <span>6/8</span>
-            </div>
-          </div>
-
-          <div
-            className="flex items-center justify-between p-2 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high transition-colors cursor-pointer border border-surface-container-high/60"
-            onClick={() => quickFillRoom("FTU999")}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="font-code-inline font-bold bg-surface-container px-1.5 py-0.5 rounded text-xs">
-                # FTU999
-              </span>
-              <span className="font-body-sm text-on-surface truncate font-medium">
-                K59 Hội Quán Phố Cổ (200 câu)
-              </span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0 text-secondary font-label-sm">
-              <span className="material-symbols-outlined text-[14px]">group</span>
-              <span>4/6</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* ========================================================================= */}
       {/* POPUP MODAL: GOOGLE ACCOUNT CHOOSER (MÔ PHỎNG CHỈN CHU OAUTH POPUP)        */}
       {/* ========================================================================= */}
@@ -960,15 +916,25 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
             </div>
 
             <button
-              onClick={() => {
-                setRoomCode("ALCH88");
+              onClick={async () => {
+                try {
+                  if (navigator.clipboard) {
+                    const text = await navigator.clipboard.readText();
+                    const clean = text.trim().toUpperCase();
+                    if (clean) {
+                      setRoomCode(clean);
+                      setIsQRScannerOpen(false);
+                      triggerToast(`📋 Đã dán mã phòng: ${clean}!`);
+                      return;
+                    }
+                  }
+                } catch {}
                 setIsQRScannerOpen(false);
-                triggerToast("📷 Đã nhận diện mã bàn: ALCH88!");
               }}
               className="w-full py-2.5 rounded-lg bg-primary text-on-primary font-body-sm font-semibold transition-colors"
               type="button"
             >
-              Mô phỏng quét trúng bàn ALCH88
+              Dán mã phòng từ Clipboard
             </button>
           </div>
         </div>

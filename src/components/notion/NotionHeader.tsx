@@ -10,8 +10,8 @@ interface NotionHeaderProps {
 }
 
 export const NotionHeader: React.FC<NotionHeaderProps> = ({
-  roomCode = "ALCH88",
-  memberCount = "4/8",
+  roomCode = "",
+  memberCount = "0/8",
   currentUser,
   onAvatarClick,
 }) => {
@@ -37,7 +37,7 @@ export const NotionHeader: React.FC<NotionHeaderProps> = ({
             </div>
             <div className="flex items-center gap-space-xs mt-0.5">
               <span className="font-code-inline text-code-inline text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">
-                # {roomCode}
+                # {roomCode || "DRINKLAB"}
               </span>
               <span className="font-label-sm text-label-sm text-secondary bg-surface-container-low px-1.5 py-0.5 rounded flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px]">group</span>

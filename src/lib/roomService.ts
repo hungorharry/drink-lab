@@ -62,30 +62,6 @@ export function generateRoomCode(): string {
 // In-memory fallback if offline
 const localFallbackRooms = new Map<string, RoomState>();
 
-// Default fallback room
-const defaultDeck = getShuffledDeck(100);
-localFallbackRooms.set("ALCH88", {
-  code: "ALCH88",
-  hostEmail: "hungorharry@gmail.com",
-  hostName: "Hoàng Nam",
-  status: "lobby",
-  totalCards: 100,
-  deck: defaultDeck,
-  currentCardIndex: 0,
-  isFlipped: false,
-  currentTurnIdx: 0,
-  players: [
-    { id: 0, uid: "user_nam", name: "Hoàng Nam", initial: "HN", isHost: true, color: "bg-amber-600", email: "hungorharry@gmail.com" },
-    { id: 1, uid: "user_maianh", name: "Mai Anh", initial: "MA", isHost: false, color: "bg-sky-600" },
-    { id: 2, uid: "user_hai", name: "Tuấn Hải", initial: "TH", isHost: false, color: "bg-emerald-600" },
-    { id: 3, uid: "user_trang", name: "Minh Trang", initial: "MT", isHost: false, color: "bg-purple-600" },
-  ],
-  beerConsumed: 18,
-  history: [],
-  reactions: [],
-  updatedAt: Date.now(),
-});
-
 /**
  * Creates a new room in Cloud Firestore
  */
