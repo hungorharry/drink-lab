@@ -32,6 +32,8 @@ service cloud.firestore {
     //   - currentCard: map (optional, currently revealed card object)
     //   - drawnAt: number or timestamp (optional)
     //   - round: int/number (optional, 0 to 1000)
+    //   - votes: map (optional, player votes map, size <= 100)
+    //   - endGameRequest: map (optional, all-player consensus request)
     //
     // ===============================================================
 
@@ -102,7 +104,9 @@ service cloud.firestore {
           'isFlipping',
           'currentCard',
           'drawnAt',
-          'round'
+          'round',
+          'votes',
+          'endGameRequest'
         ]) &&
         // Required field validation
         data.code is string &&
@@ -130,7 +134,9 @@ service cloud.firestore {
         (!('isFlipping' in data) || (data.isFlipping is bool)) &&
         (!('currentCard' in data) || (data.currentCard is map)) &&
         (!('drawnAt' in data) || (data.drawnAt is number || data.drawnAt is timestamp)) &&
-        (!('round' in data) || (data.round is number && data.round >= 0 && data.round <= 1000));
+        (!('round' in data) || (data.round is number && data.round >= 0 && data.round <= 1000)) &&
+        (!('votes' in data) || (data.votes is map && data.votes.size() <= 100)) &&
+        (!('endGameRequest' in data) || (data.endGameRequest is map));
     }
 
     // ===============================================================

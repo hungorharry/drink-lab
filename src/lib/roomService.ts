@@ -24,6 +24,12 @@ export interface RoomState {
   beerConsumed: number;
   history: CardHistoryItem[];
   reactions: { id: number; emoji: string; left: number; timestamp: number }[];
+  votes?: Record<string, string>;
+  endGameRequest?: {
+    requesterName: string;
+    requestedAt: number;
+    approvals: string[];
+  } | null;
   updatedAt: number;
 }
 

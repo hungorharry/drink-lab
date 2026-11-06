@@ -154,11 +154,15 @@ export default function Home() {
         roomCode={roomCode}
         memberCount={memberCountText}
         currentUser={currentUser}
-        onAvatarClick={() => setCurrentScreen("auth")}
+        onAvatarClick={
+          currentScreen === "spectator"
+            ? undefined
+            : () => setCurrentScreen("auth")
+        }
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full bg-surface pt-header-safe pb-nav-safe px-margin flex flex-col">
+      <main className={`flex-1 w-full bg-surface pt-header-safe ${currentScreen === "spectator" ? "pb-6" : "pb-nav-safe"} px-margin flex flex-col`}>
         {/* Step 1: Đăng nhập Google & Vào bàn hoặc Tạo phòng mới */}
         {currentScreen === "auth" && (
           <NotionAuthView
@@ -220,11 +224,13 @@ export default function Home() {
         )}
       </main>
 
-      {/* Bottom Fixed Notion Navigation */}
-      <NotionNav
-        currentScreen={currentScreen}
-        onSelectScreen={(screen) => setCurrentScreen(screen)}
-      />
+      {/* Bottom Fixed Notion Navigation (Ẩn hoàn toàn khi đang trong trận đấu thực chiến) */}
+      {currentScreen !== "spectator" && (
+        <NotionNav
+          currentScreen={currentScreen}
+          onSelectScreen={(screen) => setCurrentScreen(screen)}
+        />
+      )}
     </div>
   );
 }

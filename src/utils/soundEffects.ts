@@ -213,6 +213,106 @@ class SoundManager {
       });
     } catch (e) {}
   }
+
+  // 7. Âm thanh Kèn Trống Chúc Mừng Rút Bài (Brass Trumpet Fanfare & Drum Celebration)
+  public playFanfareCelebration() {
+    if (this.isMuted) return;
+    const ctx = this.initCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+
+      // 1. Drum beat roll (tiếng trống tùng tùng)
+      const drumTimes = [0, 0.08, 0.16, 0.24, 0.32];
+      drumTimes.forEach((dt) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const t = now + dt;
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(140, t);
+        osc.frequency.exponentialRampToValueAtTime(50, t + 0.07);
+
+        gain.gain.setValueAtTime(0.25, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.07);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t);
+        osc.stop(t + 0.08);
+      });
+
+      // 2. Brass Trumpet Fanfare: G4 (392), C5 (523), E5 (659), G5 (784)
+      const fanfareNotes = [
+        { note: 392.0, start: 0.35, dur: 0.12 },
+        { note: 523.25, start: 0.48, dur: 0.12 },
+        { note: 659.25, start: 0.61, dur: 0.14 },
+        { note: 783.99, start: 0.76, dur: 0.45 },
+      ];
+
+      fanfareNotes.forEach(({ note, start, dur }) => {
+        const t = now + start;
+
+        // Lead Trumpet (Sawtooth filtered for rich brass timbre)
+        const osc1 = ctx.createOscillator();
+        const filter = ctx.createBiquadFilter();
+        const gain = ctx.createGain();
+
+        osc1.type = "sawtooth";
+        osc1.frequency.setValueAtTime(note, t);
+
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(1800, t);
+        filter.frequency.exponentialRampToValueAtTime(900, t + dur);
+
+        gain.gain.setValueAtTime(0.18, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
+
+        osc1.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start(t);
+        osc1.stop(t + dur + 0.05);
+
+        // Harmonics (Triangle layer for warmth)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "triangle";
+        osc2.frequency.setValueAtTime(note * 0.5, t); // Octave lower body
+        gain2.gain.setValueAtTime(0.12, t);
+        gain2.gain.exponentialRampToValueAtTime(0.01, t + dur);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(t);
+        osc2.stop(t + dur + 0.05);
+      });
+
+      // 3. Final Crash Cymbal
+      const crashStart = now + 0.76;
+      const bufferSize = ctx.sampleRate * 0.35;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const crashFilter = ctx.createBiquadFilter();
+      crashFilter.type = "highpass";
+      crashFilter.frequency.setValueAtTime(5000, crashStart);
+
+      const crashGain = ctx.createGain();
+      crashGain.gain.setValueAtTime(0.15, crashStart);
+      crashGain.gain.exponentialRampToValueAtTime(0.001, crashStart + 0.35);
+
+      noise.connect(crashFilter);
+      crashFilter.connect(crashGain);
+      crashGain.connect(ctx.destination);
+      noise.start(crashStart);
+    } catch (e) {}
+  }
 }
 
 export const sounds = new SoundManager();
