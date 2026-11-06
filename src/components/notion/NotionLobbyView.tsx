@@ -5,7 +5,7 @@ import { QuestionHistoryModal } from "./QuestionHistoryModal";
 import { Player } from "@/types/game";
 import { sounds } from "@/utils/soundEffects";
 import { DynamicQRCode } from "./DynamicQRCode";
-import { OnlineUser, sendRoomInvite } from "@/lib/roomService";
+import { OnlineUser, sendRoomInvite, getCanonicalUid } from "@/lib/roomService";
 import { GoogleUser } from "./NotionAuthView";
 
 interface NotionLobbyViewProps {
@@ -128,9 +128,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
   const handleInviteOnlineUser = async (user: OnlineUser) => {
     sounds.playBeerClink();
 
-    const targetUid =
-      user.uid ||
-      (user.email ? user.email.replace(/[^a-zA-Z0-9]/g, "_") : "");
+    const targetUid = getCanonicalUid(user);
 
     // Gửi popup trực tiếp tới màn hình thiết bị của người chơi realtime
     if (targetUid && currentUser) {
@@ -139,7 +137,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
         fromName: currentUser.name || "Chủ Xị",
         fromAvatar: currentUser.avatar || "",
       });
-      setInvitedUids((prev) => ({ ...prev, [user.uid || targetUid]: true }));
+      setInvitedUids((prev) => ({ ...prev, [targetUid]: true }));
       triggerToast(`🚀 Đã gửi lời mời trực tiếp tới màn hình của ${user.name}!`);
     } else {
       triggerToast(`🎉 Đang chuẩn bị link mời cho ${user.name}...`);

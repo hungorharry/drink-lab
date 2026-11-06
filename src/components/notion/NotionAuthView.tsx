@@ -18,6 +18,7 @@ interface NotionAuthViewProps {
   currentUser?: GoogleUser | null;
   onlineUsers?: OnlineUser[];
   activeRooms?: RoomState[];
+  onUserChange?: (user: GoogleUser | null) => void;
   onJoinRoom?: (roomCode: string, playerName: string, tolerance: string, user: GoogleUser) => void;
   onCreateRoom?: (user: GoogleUser) => void;
 }
@@ -28,6 +29,7 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
   currentUser = null,
   onlineUsers = [],
   activeRooms = [],
+  onUserChange,
   onJoinRoom,
   onCreateRoom,
 }) => {
@@ -93,6 +95,7 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
       );
       setGoogleUser(user);
       setPlayerName(user.name);
+      if (onUserChange) onUserChange(user);
       setIsSigningIn(false);
       sounds.playSuccessChime();
       triggerToast(`✅ Đã đăng nhập Email: ${user.name}`);
@@ -126,6 +129,7 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
       const user = await loginWithGoogle();
       setGoogleUser(user);
       setPlayerName(user.name);
+      if (onUserChange) onUserChange(user);
       setIsSigningIn(false);
       setIsGoogleModalOpen(false);
       sounds.playSuccessChime();
@@ -163,6 +167,7 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
       };
       setGoogleUser(user);
       setPlayerName(accountName);
+      if (onUserChange) onUserChange(user);
       setIsSigningIn(false);
       setIsGoogleModalOpen(false);
       sounds.playSuccessChime();
@@ -177,6 +182,7 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
       console.error(e);
     }
     setGoogleUser(null);
+    if (onUserChange) onUserChange(null);
     triggerToast("Đã đăng xuất tài khoản Google.");
   };
 

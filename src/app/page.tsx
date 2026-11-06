@@ -377,6 +377,10 @@ export default function Home() {
             currentUser={currentUser}
             onlineUsers={onlineUsers}
             activeRooms={activeRooms}
+            onUserChange={(u) => {
+              setCurrentUser(u);
+              if (u) updatePresence(u, roomCode || null);
+            }}
             onJoinRoom={handleJoinRoom}
             onCreateRoom={handleCreateRoom}
           />
