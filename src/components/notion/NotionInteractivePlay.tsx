@@ -73,6 +73,31 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
   const cardIndex = roomData?.currentCardIndex ?? 0;
   // Optimistic UI state cho việc lật thẻ lập tức 0ms
   const [localFlipped, setLocalFlipped] = useState<boolean>(false);
+  // Hiệu ứng tương tác 3D xoay lá bài theo chuyển động chuột / tay
+  const [cardTilt, setCardTilt] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isFlippingAnim, setIsFlippingAnim] = useState<boolean>(false);
+
+  const handleCardMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isFlippingAnim) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    setCardTilt({ x: -py * 14, y: px * 14 });
+  };
+
+  const handleCardMouseLeave = () => {
+    setCardTilt({ x: 0, y: 0 });
+  };
+
+  useEffect(() => {
+    const remoteFlipped = Boolean(roomData?.isFlipped);
+    if (remoteFlipped !== localFlipped) {
+      setIsFlippingAnim(true);
+      sounds.playCardFlip();
+      const timer = setTimeout(() => setIsFlippingAnim(false), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [roomData?.isFlipped]);
 
   useEffect(() => {
     setLocalFlipped(Boolean(roomData?.isFlipped));
@@ -306,11 +331,17 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
     }
     if (isFlipped) return;
 
-    // Kích hoạt ngay lập tức 0ms Optimistic UI
+    // Kích hoạt ngay lập tức 0ms Optimistic UI & Hiệu ứng xoay 3D
     setLocalFlipped(true);
+    setIsFlippingAnim(true);
     triggerHaptic("heavy");
+    // Âm thanh vút bài 3D và tiếng snap tiếp đất
+    sounds.playCardFlip();
     // Âm thanh kèn trống chúc mừng + cụng ly
-    sounds.playFanfareCelebration();
+    setTimeout(() => {
+      sounds.playFanfareCelebration();
+      setIsFlippingAnim(false);
+    }, 280);
     triggerToast(`🎺🎉 ${activePlayer?.name || "Bạn"} vừa bốc mở thẻ bài mới!`);
 
     // Cập nhật Firestore -> Tất cả máy khác lập tức nhận snapshot và xoay 3D lật thẻ
@@ -842,64 +873,126 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
           </span>
         </div>
 
-        {/* CARD CANVAS: CHẠM ĐỂ BỐC HOẶC LẬT MỞ CÂU HỎI SIÊU NÉT (ZERO BLUR) */}
-        <div className="my-1 select-none">
-          {!isFlipped ? (
-            /* CARD FRONT: Mặt úp của lá bài (Card Back Design) */
+        {/* CARD CANVAS 3D: KHÔNG GIAN 3D VẬT LÝ VỚI GÓC XOAY THỰC VÀ ĐỘ NẢY SỐNG ĐỘNG */}
+        <div
+          className="my-3 select-none"
+          style={{ perspective: "1200px" }}
+          onMouseMove={handleCardMouseMove}
+          onMouseLeave={handleCardMouseLeave}
+        >
+          <div
+            onClick={!isFlipped && isMyTurn ? handleDrawCard : undefined}
+            style={{
+              transformStyle: "preserve-3d",
+              WebkitTransformStyle: "preserve-3d",
+              transform: isFlipped
+                ? `rotateX(${cardTilt.x}deg) rotateY(${180 + cardTilt.y}deg)`
+                : `rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg)`,
+              transition: isFlippingAnim
+                ? "transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)"
+                : "transform 0.15s ease-out",
+            }}
+            className={`relative w-full min-h-[300px] sm:min-h-[320px] rounded-3xl transition-shadow duration-300 ${
+              isFlipped
+                ? "shadow-2xl"
+                : isMyTurn
+                ? "shadow-xl hover:shadow-[0_12px_35px_rgba(245,158,11,0.3)] cursor-pointer"
+                : "shadow-md cursor-not-allowed"
+            }`}
+          >
+            {/* ======================================================== */}
+            {/* MẶT 1: MẶT ÚP 3D (CARD BACK DESIGN - NGHỆ THUẬT QUÂN BÀI) */}
+            {/* ======================================================== */}
             <div
-              onClick={isMyTurn ? handleDrawCard : undefined}
-              className={`w-full min-h-[250px] rounded-2xl bg-gradient-to-br from-surface-container-low via-surface-container to-surface-container-high border-2 border-dashed ${
+              style={{
+                backfaceVisibility: "hidden",
+                WebkitBackfaceVisibility: "hidden",
+              }}
+              className={`absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-amber-950 p-6 flex flex-col items-center justify-between text-center border-2 ${
                 isMyTurn
-                  ? "border-primary cursor-pointer active:scale-[0.98] shadow-md hover:border-primary/80"
-                  : "border-outline-variant/60 cursor-not-allowed shadow-sm"
-              } p-6 flex flex-col items-center justify-center text-center transition-transform`}
+                  ? "border-amber-400/80 shadow-[0_0_30px_rgba(245,158,11,0.25)]"
+                  : "border-neutral-700/60"
+              } overflow-hidden`}
             >
-              <div
-                className={`w-16 h-16 rounded-2xl ${
-                  isMyTurn
-                    ? "bg-primary text-on-primary shadow-md animate-pulse"
-                    : "bg-surface-container-highest text-secondary"
-                } flex items-center justify-center text-3xl mb-3`}
-              >
-                🎲
+              {/* Pattern hoa văn chìm phong cách bài tây cao cấp */}
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+              {/* Header của lá bài úp */}
+              <div className="w-full flex items-center justify-between z-10">
+                <span className="font-code-inline text-xs font-bold px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">
+                  ✦ SIPCRAFT 3D
+                </span>
+                <span className="text-amber-400/80 font-bold text-xs tracking-wider">
+                  #{cardIndex + 1}
+                </span>
               </div>
-              <h3 className="font-headline-sm text-base font-bold text-on-surface">
-                {isMyTurn
-                  ? "LƯỢT CỦA BẠN - CHẠM ĐỂ BỐC THẺ"
-                  : `LƯỢT CỦA ${activePlayer?.name?.toUpperCase() || "BẠN NHẬU"}`}
-              </h3>
-              <p className="font-label-sm text-secondary mt-1 max-w-[280px]">
-                {isMyTurn
-                  ? `Lá bài #${cardIndex + 1} • Luật phạt tính theo từng ngụm bia`
-                  : `Chỉ riêng ${activePlayer?.name} mới có quyền rút thẻ trên máy của họ.`}
-              </p>
-              {isMyTurn ? (
-                <span className="mt-4 px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-sm font-semibold shadow-sm animate-bounce">
-                  Lật Thẻ Ngay 🃏
-                </span>
-              ) : (
-                <span className="mt-4 px-3.5 py-1 rounded-full bg-surface-container-highest text-secondary font-label-sm flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-                  <span>Đang đợi {activePlayer?.name} bốc bài...</span>
-                </span>
-              )}
+
+              {/* Trung tâm lá bài với hiệu ứng nổi khối 3D */}
+              <div className="flex flex-col items-center justify-center my-auto z-10 py-3">
+                <div
+                  className={`w-20 h-20 rounded-2xl ${
+                    isMyTurn
+                      ? "bg-gradient-to-tr from-amber-500 to-yellow-300 text-neutral-950 shadow-[0_10px_25px_rgba(245,158,11,0.5)] animate-bounce"
+                      : "bg-neutral-800 text-neutral-400 border border-neutral-700"
+                  } flex items-center justify-center text-4xl mb-3 transition-transform`}
+                >
+                  🎲
+                </div>
+
+                <h3 className="font-headline-sm text-base sm:text-lg font-bold text-white tracking-tight drop-shadow-sm">
+                  {isMyTurn
+                    ? "LƯỢT CỦA BẠN - CHẠM ĐỂ BỐC THẺ"
+                    : `LƯỢT CỦA ${activePlayer?.name?.toUpperCase() || "BẠN NHẬU"}`}
+                </h3>
+                <p className="text-xs text-neutral-300 mt-1 max-w-[260px] leading-relaxed">
+                  {isMyTurn
+                    ? `Lá bài #${cardIndex + 1} • Luật phạt tính theo từng ngụm bia`
+                    : `Chỉ riêng ${activePlayer?.name} mới có quyền rút thẻ trên máy của họ.`}
+                </p>
+              </div>
+
+              {/* Nút chỉ dẫn dưới cùng */}
+              <div className="z-10 w-full flex justify-center">
+                {isMyTurn ? (
+                  <span className="px-5 py-2 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 font-bold text-xs shadow-lg uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition-transform">
+                    <span>Lật Thẻ 3D Ngay</span>
+                    <span className="material-symbols-outlined text-[15px]">rotate_right</span>
+                  </span>
+                ) : (
+                  <span className="px-4 py-1.5 rounded-full bg-neutral-800/90 text-neutral-400 text-xs flex items-center gap-2 border border-neutral-700/60">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                    <span>Đang đợi {activePlayer?.name} bốc bài...</span>
+                  </span>
+                )}
+              </div>
             </div>
-          ) : (
-            /* CARD BACK: Mặt ngửa hiển thị câu hỏi - Độ tương phản cao, chữ đậm rõ nét trên mọi điện thoại */
-            <div className="w-full rounded-2xl bg-white border-2 border-primary/20 p-5 flex flex-col justify-between shadow-xl animate-card-flip-crisp select-none">
+
+            {/* ======================================================== */}
+            {/* MẶT 2: MẶT NGỬA 3D (CARD FRONT - HIỂN THỊ CÂU HỎI THỬ THÁCH) */}
+            {/* ======================================================== */}
+            <div
+              style={{
+                backfaceVisibility: "hidden",
+                WebkitBackfaceVisibility: "hidden",
+                transform: "rotateY(180deg)",
+              }}
+              className="absolute inset-0 w-full h-full rounded-3xl bg-white border-2 border-amber-500/30 p-5 sm:p-6 flex flex-col justify-between shadow-2xl overflow-hidden select-none"
+            >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-code-inline text-xs font-bold uppercase px-2.5 py-1 rounded bg-black text-white shadow-xs">
+                  <span className="font-code-inline text-xs font-bold uppercase px-3 py-1 rounded-lg bg-neutral-950 text-white shadow-xs tracking-wider">
                     {currentCard?.typeLabel || "THỬ THÁCH"}
                   </span>
-                  <span className="font-label-sm text-neutral-600 font-semibold">
+                  <span className="font-label-sm text-neutral-600 font-bold text-xs bg-neutral-100 px-2.5 py-1 rounded-full border border-neutral-200">
                     {currentCard?.difficulty || "Độ khó: 3/5"}
                   </span>
                 </div>
-                <h3 className="font-headline-sm text-lg font-bold text-neutral-950 mt-1">
+
+                <h3 className="font-headline-sm text-lg sm:text-xl font-black text-neutral-950 mt-2 tracking-tight">
                   {currentCard?.title || "Thử Thách Nhậu"}
                 </h3>
-                <div className="mt-2.5 p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 shadow-xs">
+
+                <div className="mt-3 p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 to-yellow-50/70 border border-amber-200/90 shadow-xs">
                   <p className="font-body-md text-neutral-950 font-semibold text-[15px] sm:text-[16px] leading-relaxed">
                     {currentCard?.description || "Đang tải nội dung lá bài..."}
                   </p>
@@ -907,16 +1000,16 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
               </div>
 
               <div className="mt-4 pt-3 border-t border-neutral-200 flex items-center justify-between text-label-md">
-                <span className="text-red-700 font-bold flex items-center gap-1 truncate max-w-[220px]">
-                  <span className="material-symbols-outlined text-[18px]">gavel</span>
+                <span className="text-red-700 font-bold flex items-center gap-1.5 truncate max-w-[220px]">
+                  <span className="material-symbols-outlined text-[20px]">gavel</span>
                   <span>{currentCard?.penalty || "Phạt 1 ngụm"}</span>
                 </span>
-                <span className="font-bold text-neutral-700 font-code-inline text-xs shrink-0">
+                <span className="font-bold text-neutral-800 font-code-inline text-xs bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-200">
                   🍺 {beerConsumed} ngụm cả bàn
                 </span>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* HIỆU ỨNG VÒNG QUAY MAY MẮN ROULETTE ĐANG CHẠY */}

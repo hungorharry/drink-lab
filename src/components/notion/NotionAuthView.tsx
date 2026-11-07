@@ -486,33 +486,30 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* KHỐI 2: THIẾT LẬP DANH TÍNH BÀN NHẬU (TÊN GỌI & TỬU LƯỢNG NGỤM)            */}
+      {/* KHỐI 2: THIẾT LẬP BIỆT DANH BÀN NHẬU (MẶC ĐỊNH UỐNG BIA TÂM SỰ)            */}
       {/* ========================================================================= */}
       <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-surface-container-high space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-on-surface">
-            <span className="material-symbols-outlined text-[18px] text-primary">tune</span>
+            <span className="material-symbols-outlined text-[18px] text-primary">badge</span>
             <span className="font-label-md font-semibold tracking-tight uppercase">
-              Thiết Lập Trên Bàn Nhậu
+              Biệt Danh Của Bạn
             </span>
           </div>
           <span className="font-code-inline text-code-inline text-secondary bg-surface-container px-2 py-0.5 rounded">
-            Tính theo ngụm
+            Uống bia tâm sự 🍻
           </span>
         </div>
 
         {/* Biệt danh khi cụng ngụm */}
         <div className="flex flex-col gap-1.5">
           <label className="flex items-center justify-between text-secondary font-label-md">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[15px]">badge</span>
-              <span>Biệt danh khi cụng ngụm</span>
-            </span>
-            <span className="text-[11px] text-secondary">Hiện trên bàn chơi</span>
+            <span>Tên hiển thị trên bàn chơi</span>
+            <span className="text-[11px] text-secondary">Tự động cấp hoặc đổi tùy thích</span>
           </label>
           <div className="relative flex items-center">
             <input
-              className="w-full bg-surface-container-low text-on-surface font-body-md rounded-lg py-2.5 pl-3 pr-10 focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary focus:outline-none transition-all border border-surface-container-high"
+              className="w-full bg-surface-container-low text-on-surface font-body-md rounded-lg py-2.5 pl-3 pr-10 focus:bg-surface-container-lowest focus:ring-1 focus:ring-primary focus:outline-none transition-all border border-surface-container-high font-medium"
               id="player-name-input"
               placeholder="Ví dụ: Hải Đếm Ngụm, Nam Bợm..."
               type="text"
@@ -527,78 +524,6 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
             >
               <span className="material-symbols-outlined text-[17px]">shuffle</span>
             </button>
-          </div>
-        </div>
-
-        {/* Tửu lượng ngụm */}
-        <div className="flex flex-col gap-2">
-          <label className="flex items-center gap-1.5 text-secondary font-label-md">
-            <span className="material-symbols-outlined text-[15px]">local_bar</span>
-            <span>Tửu lượng ngụm của bạn</span>
-          </label>
-          <div className="grid grid-cols-1 gap-2" id="tolerance-pills">
-            <label
-              className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors border ${
-                tolerance === "cam-chung"
-                  ? "bg-surface-container border-primary/40 text-on-surface font-medium"
-                  : "bg-surface-container-low border-transparent hover:bg-surface-container text-secondary"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  className="accent-primary w-4 h-4 cursor-pointer"
-                  name="tolerance"
-                  type="radio"
-                  value="cam-chung"
-                  checked={tolerance === "cam-chung"}
-                  onChange={() => setTolerance("cam-chung")}
-                />
-                <span className="font-body-sm text-on-surface">Uống cầm chừng</span>
-              </div>
-              <span className="font-code-inline text-code-inline">🍺 1-2 ngụm/lượt</span>
-            </label>
-
-            <label
-              className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors border ${
-                tolerance === "toi-ben"
-                  ? "bg-surface-container border-primary/40 text-on-surface font-medium"
-                  : "bg-surface-container-low border-transparent hover:bg-surface-container text-secondary"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  className="accent-primary w-4 h-4 cursor-pointer"
-                  name="tolerance"
-                  type="radio"
-                  value="toi-ben"
-                  checked={tolerance === "toi-ben"}
-                  onChange={() => setTolerance("toi-ben")}
-                />
-                <span className="font-body-sm text-on-surface font-medium">Chiến tới bến</span>
-              </div>
-              <span className="font-code-inline text-code-inline">🍻 Không say không về</span>
-            </label>
-
-            <label
-              className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-colors border ${
-                tolerance === "tra-sua"
-                  ? "bg-surface-container border-primary/40 text-on-surface font-medium"
-                  : "bg-surface-container-low border-transparent hover:bg-surface-container text-secondary"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <input
-                  className="accent-primary w-4 h-4 cursor-pointer"
-                  name="tolerance"
-                  type="radio"
-                  value="tra-sua"
-                  checked={tolerance === "tra-sua"}
-                  onChange={() => setTolerance("tra-sua")}
-                />
-                <span className="font-body-sm text-on-surface">Nạn nhân trà sữa</span>
-              </div>
-              <span className="font-code-inline text-code-inline">🧋 Uống nước ngọt</span>
-            </label>
           </div>
         </div>
       </div>

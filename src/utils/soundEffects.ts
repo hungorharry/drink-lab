@@ -24,7 +24,7 @@ class SoundManager {
     return this.isMuted;
   }
 
-  // 1. Âm thanh bốc & lật thẻ bài (Card Flip / Swoosh)
+  // 1. Âm thanh bốc & lật thẻ bài 3D (3D Spatial Card Flip Whoosh & Snap)
   public playCardFlip() {
     if (this.isMuted) return;
     const ctx = this.initCtx();
@@ -32,42 +32,71 @@ class SoundManager {
 
     try {
       const now = ctx.currentTime;
-      // White noise burst for card sliding friction
-      const bufferSize = ctx.sampleRate * 0.08;
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = Math.random() * 2 - 1;
+      // 1. Gió rít khi lá bài bay vút trong không gian 3D (Aerodynamic Whoosh)
+      const whooshSize = Math.floor(ctx.sampleRate * 0.18);
+      const whooshBuffer = ctx.createBuffer(1, whooshSize, ctx.sampleRate);
+      const whooshData = whooshBuffer.getChannelData(0);
+      for (let i = 0; i < whooshSize; i++) {
+        whooshData[i] = (Math.random() * 2 - 1) * Math.sin((i / whooshSize) * Math.PI);
       }
-      const noise = ctx.createBufferSource();
-      noise.buffer = buffer;
+      const whoosh = ctx.createBufferSource();
+      whoosh.buffer = whooshBuffer;
 
-      const filter = ctx.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(1400, now);
-      filter.frequency.exponentialRampToValueAtTime(400, now + 0.08);
+      const whooshFilter = ctx.createBiquadFilter();
+      whooshFilter.type = "bandpass";
+      whooshFilter.frequency.setValueAtTime(600, now);
+      whooshFilter.frequency.exponentialRampToValueAtTime(2400, now + 0.08);
+      whooshFilter.frequency.exponentialRampToValueAtTime(450, now + 0.18);
+      whooshFilter.Q.setValueAtTime(3.5, now);
 
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.18, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+      const whooshGain = ctx.createGain();
+      whooshGain.gain.setValueAtTime(0.01, now);
+      whooshGain.gain.linearRampToValueAtTime(0.35, now + 0.07);
+      whooshGain.gain.exponentialRampToValueAtTime(0.005, now + 0.18);
 
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      noise.start(now);
+      whoosh.connect(whooshFilter);
+      whooshFilter.connect(whooshGain);
+      whooshGain.connect(ctx.destination);
+      whoosh.start(now);
 
-      // Snap tone
-      const osc = ctx.createOscillator();
-      const oscGain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.exponentialRampToValueAtTime(120, now + 0.06);
-      oscGain.gain.setValueAtTime(0.15, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.06);
-      osc.connect(oscGain);
-      oscGain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.07);
+      // 2. Tiếng đập nảy dứt khoát khi lá bài 3D lật tiếp đất (Crisp Card Snap / Table Thud)
+      const snapTime = now + 0.09;
+      const snapOsc = ctx.createOscillator();
+      const snapGain = ctx.createGain();
+      snapOsc.type = "sine";
+      snapOsc.frequency.setValueAtTime(420, snapTime);
+      snapOsc.frequency.exponentialRampToValueAtTime(80, snapTime + 0.06);
+
+      snapGain.gain.setValueAtTime(0.28, snapTime);
+      snapGain.gain.exponentialRampToValueAtTime(0.001, snapTime + 0.06);
+
+      snapOsc.connect(snapGain);
+      snapGain.connect(ctx.destination);
+      snapOsc.start(snapTime);
+      snapOsc.stop(snapTime + 0.07);
+
+      // 3. Tiếng ma sát bề mặt lá bài (Paper Rustle)
+      const rustleSize = Math.floor(ctx.sampleRate * 0.08);
+      const rustleBuffer = ctx.createBuffer(1, rustleSize, ctx.sampleRate);
+      const rustleData = rustleBuffer.getChannelData(0);
+      for (let i = 0; i < rustleSize; i++) {
+        rustleData[i] = Math.random() * 2 - 1;
+      }
+      const rustle = ctx.createBufferSource();
+      rustle.buffer = rustleBuffer;
+
+      const rustleFilter = ctx.createBiquadFilter();
+      rustleFilter.type = "highpass";
+      rustleFilter.frequency.setValueAtTime(3200, snapTime);
+
+      const rustleGain = ctx.createGain();
+      rustleGain.gain.setValueAtTime(0.15, snapTime);
+      rustleGain.gain.exponentialRampToValueAtTime(0.001, snapTime + 0.08);
+
+      rustle.connect(rustleFilter);
+      rustleFilter.connect(rustleGain);
+      rustleGain.connect(ctx.destination);
+      rustle.start(snapTime);
     } catch (e) {}
   }
 
