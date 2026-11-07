@@ -11,6 +11,7 @@ import {
   User,
 } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { safeStorage } from "@/utils/safeStorage";
 
 // Firebase configuration from environment variables (.env.local)
 const firebaseConfig = {
@@ -155,13 +156,11 @@ export async function logoutFirebase(): Promise<void> {
 export function onAuthUserChanged(
   callback: (user: { name: string; email: string; avatar: string; uid: string } | null) => void
 ): () => void {
-  // Check localStorage first for instant rendering
-  if (typeof window !== "undefined") {
+  // Check safeStorage first for instant rendering
+  const saved = safeStorage.getItem("drinklab_user_session");
+  if (saved) {
     try {
-      const saved = localStorage.getItem("drinklab_user_session");
-      if (saved) {
-        callback(JSON.parse(saved));
-      }
+      callback(JSON.parse(saved));
     } catch {}
   }
 
@@ -181,18 +180,10 @@ export function onAuthUserChanged(
           )}`,
         uid: firebaseUser.uid,
       };
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem("drinklab_user_session", JSON.stringify(cleanUser));
-        } catch {}
-      }
+      safeStorage.setItem("drinklab_user_session", JSON.stringify(cleanUser));
       callback(cleanUser);
     } else {
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.removeItem("drinklab_user_session");
-        } catch {}
-      }
+      safeStorage.removeItem("drinklab_user_session");
       callback(null);
     }
   });

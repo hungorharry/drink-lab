@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { sounds } from "@/utils/soundEffects";
 import { loginWithGoogle, loginOrRegisterWithEmail, logoutFirebase, isFirebaseConfigured } from "@/lib/firebase";
 import { OnlineUser, RoomState } from "@/lib/roomService";
+import { safeStorage } from "@/utils/safeStorage";
 
 export interface GoogleUser {
   name: string;
@@ -39,12 +40,15 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
   const [isQRScannerOpen, setIsQRScannerOpen] = useState<boolean>(false);
   const [isSigningIn, setIsSigningIn] = useState<boolean>(false);
 
-  // Phương thức đăng nhập: Google hoặc Email
+  // Phương thức đăng nhập tùy chọn: Google hoặc Email
   const [authMode, setAuthMode] = useState<"google" | "email">("google");
+  const [showAuthOptions, setShowAuthOptions] = useState<boolean>(false);
   const [emailInput, setEmailInput] = useState<string>("");
   const [passwordInput, setPasswordInput] = useState<string>("");
 
-  const [playerName, setPlayerName] = useState<string>(currentUser?.name || "");
+  const [playerName, setPlayerName] = useState<string>(
+    currentUser?.name || `Chiến Hữu #${Math.floor(100 + Math.random() * 900)}`
+  );
   const [tolerance, setTolerance] = useState<string>("toi-ben");
   const [roomCode, setRoomCode] = useState<string>(initialRoomCode || "");
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -141,6 +145,8 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
       // Xử lý các case popup đóng hoặc domain chưa cấp quyền
       if (errMsg.includes("popup-closed-by-user")) {
         triggerToast("ℹ️ Bạn đã đóng cửa sổ đăng nhập Google.");
+      } else if (errMsg.includes("popup-blocked") || errMsg.includes("Cross-Origin-Opener-Policy")) {
+        triggerToast("⚠️ Trình duyệt (Firefox/Safari) đã chặn popup. Bạn có thể chơi ngay không cần tài khoản!");
       } else if (errMsg.includes("unauthorized-domain")) {
         triggerToast("⚠️ Domain chưa được cấp quyền trong Firebase Console -> Authorized Domains!");
       } else {
@@ -211,35 +217,43 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
     triggerToast(`Đã chọn bàn #${code}`);
   };
 
+  const ensureUser = (): GoogleUser => {
+    if (googleUser) return googleUser;
+    const cleanName = playerName.trim() || `Chiến Hữu #${Math.floor(100 + Math.random() * 900)}`;
+    const guestUser: GoogleUser = {
+      name: cleanName,
+      email: "",
+      avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`,
+      uid: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    };
+    setGoogleUser(guestUser);
+    setPlayerName(cleanName);
+    safeStorage.setItem("drinklab_user_session", JSON.stringify(guestUser));
+    if (onUserChange) onUserChange(guestUser);
+    return guestUser;
+  };
+
   const handleJoin = () => {
-    if (!googleUser) {
-      triggerToast("🔒 Bắt buộc đăng nhập Google hoặc Email trước khi vào bàn nhậu!");
-      setIsGoogleModalOpen(true);
-      return;
-    }
     const code = roomCode.trim().toUpperCase();
     if (!code) {
       triggerToast("⚠️ Vui lòng nhập mã phòng (ví dụ: SIP-1234) hoặc quét mã QR!");
       return;
     }
+    const userToUse = ensureUser();
     sounds.playBeerClink();
-    const name = playerName.trim() || googleUser.name;
+    const name = playerName.trim() || userToUse.name;
     triggerToast(`🎉 Đang kết nối bàn [${code}] với danh tính "${name}"...`);
     if (onJoinRoom) {
-      onJoinRoom(code, name, tolerance, googleUser);
+      onJoinRoom(code, name, tolerance, userToUse);
     }
   };
 
   const handleCreate = () => {
-    if (!googleUser) {
-      triggerToast("🔒 Bắt buộc đăng nhập Google để làm Host tạo phòng!");
-      setIsGoogleModalOpen(true);
-      return;
-    }
+    const userToUse = ensureUser();
     sounds.playBeerClink();
-    triggerToast("✨ Đang khởi tạo phòng mới cùng tài khoản Google...");
+    triggerToast(`✨ Đang khởi tạo phòng mới cho chủ xị "${userToUse.name}"...`);
     if (onCreateRoom) {
-      onCreateRoom(googleUser);
+      onCreateRoom(userToUse);
     }
   };
 
@@ -297,64 +311,68 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* KHỐI 1: YÊU CẦU ĐĂNG NHẬP GOOGLE BẮT BUỘC (AUTH GATE)                      */}
+      {/* KHỐI 1: CHƠI NGAY 100% (TÙY CHỌN LIÊN KẾT GOOGLE NẾU MUỐN)                */}
       {/* ========================================================================= */}
-      {!googleUser ? (
-        <div className="bg-surface-container-lowest border-2 border-primary/20 rounded-2xl p-4 shadow-md space-y-3 relative overflow-hidden">
-          {/* Badge trạng thái */}
+      {googleUser && googleUser.email ? (
+        /* KHI ĐÃ ĐĂNG NHẬP GOOGLE HOẶC EMAIL THÀNH CÔNG */
+        <div className="bg-surface-container-lowest border border-emerald-500/40 rounded-2xl p-4 shadow-sm space-y-3 bg-gradient-to-br from-surface-container-lowest to-surface-container-low">
           <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 font-label-sm font-semibold border border-amber-300">
-              <span className="material-symbols-outlined text-[14px]">lock</span>
-              <span>Yêu cầu đăng nhập</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-label-sm font-semibold">
+              <span className="material-symbols-outlined text-[14px]">check_circle</span>
+              <span>Đã liên kết Google / Email</span>
             </span>
-            <span className="font-code-inline text-[11px] text-secondary font-medium">
-              Google OAuth 2.0
-            </span>
+            <button
+              onClick={handleGoogleSignOut}
+              className="text-secondary hover:text-error text-xs font-medium px-2 py-1 rounded transition-colors"
+              type="button"
+            >
+              Đổi tài khoản
+            </button>
           </div>
 
-          <div className="space-y-1">
-            <h2 className="font-headline-sm text-base font-bold text-on-surface">
-              Đăng Nhập Tài Khoản Google
-            </h2>
-            <p className="font-body-sm text-body-sm text-secondary leading-snug">
-              Để bảo vệ danh tính bàn nhậu, đếm ngụm chính xác và ghi nhớ lịch sử bốc thẻ của từng người, bạn cần đăng nhập tài khoản Google để tiếp tục.
-            </p>
-          </div>
-
-          {/* Lợi ích khi đăng nhập trong Notion Callout style */}
-          <div className="bg-surface-container-low rounded-xl p-3 space-y-2 border border-surface-container-high">
-            <div className="flex items-start gap-2 text-on-surface-variant font-label-sm">
-              <span className="material-symbols-outlined text-[16px] text-emerald-600 shrink-0 mt-0.5">
-                verified_user
-              </span>
-              <span>Lưu lại toàn bộ lịch sử câu hỏi &amp; ngụm bia phạt trong 2-3 tiếng.</span>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center font-headline-sm font-bold shadow-sm shrink-0">
+              {googleUser.name.charAt(0)}
             </div>
-            <div className="flex items-start gap-2 text-on-surface-variant font-label-sm">
-              <span className="material-symbols-outlined text-[16px] text-primary shrink-0 mt-0.5">
-                devices
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-body-md font-bold text-on-surface truncate">
+                  {googleUser.name}
+                </span>
+                <span className="material-symbols-outlined text-emerald-600 text-[16px]">
+                  verified
+                </span>
+              </div>
+              <span className="font-code-inline text-code-inline text-secondary truncate">
+                {googleUser.email}
               </span>
-              <span>Tự động nhận diện thiết bị khi quét mã QR vào bàn nhậu.</span>
-            </div>
-            <div className="flex items-start gap-2 text-on-surface-variant font-label-sm">
-              <span className="material-symbols-outlined text-[16px] text-amber-600 shrink-0 mt-0.5">
-                military_tech
-              </span>
-              <span>Vinh danh trên Bảng Phong Thần cuối ván nhậu.</span>
             </div>
           </div>
+        </div>
+      ) : (
+        /* CHẾ ĐỘ CHƠI NGAY KHÔNG CẦN TÀI KHOẢN */
+        <div className="bg-surface-container-lowest border border-surface-container-highest rounded-2xl p-4 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-700 flex items-center justify-center text-xl shrink-0">
+                ⚡
+              </div>
+              <div className="flex flex-col">
+                <span className="font-body-sm font-bold text-on-surface">
+                  Chơi Ngay Không Cần Tạo Tài Khoản
+                </span>
+                <span className="text-[12px] text-secondary">
+                  Chỉ cần đặt tên là vào bàn nhậu với bạn bè ngay lập tức (Realtime)
+                </span>
+              </div>
+            </div>
 
-          {/* Chuyển đổi phương thức: Google vs Email */}
-          <div className="grid grid-cols-2 gap-1.5 p-1 bg-surface-container rounded-xl border border-surface-container-high">
             <button
               type="button"
-              onClick={() => setAuthMode("google")}
-              className={`py-2 px-3 rounded-lg font-label-md font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                authMode === "google"
-                  ? "bg-surface-container-lowest text-primary shadow-xs"
-                  : "text-secondary hover:text-on-surface"
-              }`}
+              onClick={() => setShowAuthOptions(!showAuthOptions)}
+              className="text-xs text-primary font-semibold hover:underline flex items-center gap-1.5 bg-surface-container px-3 py-1.5 rounded-lg border border-surface-container-high shrink-0 cursor-pointer transition-colors"
             >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"
@@ -372,158 +390,98 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
                   fill="#EA4335"
                 />
               </svg>
-              <span>Google 1-Chạm</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setAuthMode("email")}
-              className={`py-2 px-3 rounded-lg font-label-md font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                authMode === "email"
-                  ? "bg-surface-container-lowest text-primary shadow-xs"
-                  : "text-secondary hover:text-on-surface"
-              }`}
-            >
-              <span className="material-symbols-outlined text-[15px]">mail</span>
-              <span>Đăng nhập Email</span>
+              <span>{showAuthOptions ? "Đóng tùy chọn" : "Tùy chọn: Đăng nhập Google"}</span>
             </button>
           </div>
 
-          {/* GIAO DIỆN 1: GOOGLE SIGN-IN */}
-          {authMode === "google" && (
-            <button
-              type="button"
-              onClick={handleOpenGoogleAuth}
-              className="w-full bg-primary hover:bg-neutral-800 text-on-primary py-3 px-4 rounded-xl font-body-md font-semibold flex items-center justify-center gap-3 shadow-md active:scale-[0.98] transition-all cursor-pointer group"
-            >
-              <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center shrink-0 p-0.5">
-                <svg className="w-full h-full" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    fill="#EA4335"
-                  />
-                </svg>
-              </div>
-              <span>Tiếp Tục Với Google</span>
-              <span className="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform ml-auto">
-                arrow_forward
-              </span>
-            </button>
-          )}
+          {/* Hộp đăng nhập Google/Email mở rộng khi người dùng bấm vào */}
+          {showAuthOptions && (
+            <div className="pt-3 border-t border-surface-container-high space-y-3 animate-fadeIn">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-surface-container rounded-xl border border-surface-container-high">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("google")}
+                  className={`py-2 px-3 rounded-lg font-label-md font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                    authMode === "google"
+                      ? "bg-surface-container-lowest text-primary shadow-xs"
+                      : "text-secondary hover:text-on-surface"
+                  }`}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                    <path
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      fill="#EA4335"
+                    />
+                  </svg>
+                  <span>Google</span>
+                </button>
 
-          {/* GIAO DIỆN 2: EMAIL / PASSWORD SIGN-IN */}
-          {authMode === "email" && (
-            <form onSubmit={handleEmailLogin} className="space-y-2.5 pt-1">
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-secondary uppercase tracking-wider block">
-                  Địa chỉ Email
-                </label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-secondary text-[18px]">
-                    alternate_email
-                  </span>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode("email")}
+                  className={`py-2 px-3 rounded-lg font-label-md font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                    authMode === "email"
+                      ? "bg-surface-container-lowest text-primary shadow-xs"
+                      : "text-secondary hover:text-on-surface"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">mail</span>
+                  <span>Email</span>
+                </button>
+              </div>
+
+              {authMode === "google" && (
+                <button
+                  type="button"
+                  onClick={handleOpenGoogleAuth}
+                  className="w-full bg-primary hover:bg-neutral-800 text-on-primary py-2.5 px-4 rounded-xl font-body-sm font-semibold flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                >
+                  <span>Đăng Nhập Với Google</span>
+                </button>
+              )}
+
+              {authMode === "email" && (
+                <form onSubmit={handleEmailLogin} className="space-y-2 pt-1">
                   <input
                     type="email"
                     required
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
-                    placeholder="ban.nhau@gmail.com"
-                    className="w-full bg-surface-container-low text-on-surface font-body-sm rounded-xl py-2.5 pl-10 pr-3 border border-surface-container-high focus:outline-none focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest"
+                    placeholder="Email của bạn..."
+                    className="w-full bg-surface-container-low text-on-surface font-body-sm rounded-xl py-2 px-3 border border-surface-container-high focus:outline-none"
                   />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-secondary uppercase tracking-wider block">
-                  Mật khẩu (tối thiểu 6 ký tự)
-                </label>
-                <div className="relative flex items-center">
-                  <span className="material-symbols-outlined absolute left-3 text-secondary text-[18px]">
-                    key
-                  </span>
                   <input
                     type="password"
                     required
                     minLength={6}
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-surface-container-low text-on-surface font-body-sm rounded-xl py-2.5 pl-10 pr-3 border border-surface-container-high focus:outline-none focus:ring-1 focus:ring-primary focus:bg-surface-container-lowest"
+                    placeholder="Mật khẩu (tối thiểu 6 ký tự)..."
+                    className="w-full bg-surface-container-low text-on-surface font-body-sm rounded-xl py-2 px-3 border border-surface-container-high focus:outline-none"
                   />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSigningIn}
-                className="w-full bg-primary hover:bg-neutral-800 text-on-primary py-2.5 px-4 rounded-xl font-body-md font-semibold flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer mt-1"
-              >
-                {isSigningIn ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    <span>Đang xác thực...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[18px]">login</span>
-                    <span>Đăng Nhập / Tạo Tài Khoản</span>
-                  </>
-                )}
-              </button>
-
-              <p className="text-[11px] text-center text-secondary leading-snug">
-                Hệ thống tự động đăng nhập nếu đã có tài khoản, hoặc tự tạo mới nếu là lần đầu nhập tiệc!
-              </p>
-            </form>
+                  <button
+                    type="submit"
+                    disabled={isSigningIn}
+                    className="w-full bg-primary text-on-primary py-2 px-3 rounded-xl font-body-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {isSigningIn ? "Đang xác thực..." : "Đăng Nhập / Tạo Tài Khoản"}
+                  </button>
+                </form>
+              )}
+            </div>
           )}
-        </div>
-      ) : (
-        /* KHI ĐÃ ĐĂNG NHẬP GOOGLE THÀNH CÔNG */
-        <div className="bg-surface-container-lowest border border-emerald-500/40 rounded-2xl p-4 shadow-sm space-y-3 bg-gradient-to-br from-surface-container-lowest to-surface-container-low">
-          <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-label-sm font-semibold">
-              <span className="material-symbols-outlined text-[14px]">check_circle</span>
-              <span>Đã xác thực Google</span>
-            </span>
-            <button
-              onClick={handleGoogleSignOut}
-              className="text-secondary hover:text-error font-label-sm transition-colors"
-              type="button"
-            >
-              Đổi tài khoản
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center font-headline-sm font-bold shadow-sm shrink-0">
-              {googleUser.name.charAt(0)}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="font-body-md font-bold text-on-surface truncate">
-                  {googleUser.name}
-                </span>
-                <span className="material-symbols-outlined text-emerald-600 text-[16px]">
-                  verified
-                </span>
-              </div>
-              <span className="font-code-inline text-code-inline text-secondary truncate">
-                {googleUser.email}
-              </span>
-            </div>
-          </div>
         </div>
       )}
 
@@ -678,11 +636,7 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
             </span>
           </div>
           <button
-            className={`px-5 rounded-lg font-headline-sm text-sm font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer shrink-0 ${
-              googleUser
-                ? "bg-primary text-on-primary hover:bg-neutral-800"
-                : "bg-surface-container-high text-secondary hover:bg-surface-container-highest"
-            }`}
+            className="px-5 rounded-lg font-headline-sm text-sm font-semibold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer shrink-0 bg-primary text-on-primary hover:bg-neutral-800"
             onClick={handleJoin}
             type="button"
           >
@@ -707,11 +661,7 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
       {/* Nút tạo bàn mới (Làm Host) */}
       <div className="flex flex-col gap-2">
         <button
-          className={`w-full py-3 px-4 rounded-xl font-body-md font-semibold flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] transition-all cursor-pointer ${
-            googleUser
-              ? "bg-primary text-on-primary hover:bg-neutral-800"
-              : "bg-surface-container-high text-secondary hover:bg-surface-container-highest"
-          }`}
+          className="w-full py-3.5 px-4 rounded-xl font-body-md font-semibold flex items-center justify-center gap-2 shadow-md active:scale-[0.99] transition-all cursor-pointer bg-primary text-on-primary hover:bg-neutral-800"
           type="button"
           onClick={handleCreate}
         >

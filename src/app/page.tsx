@@ -10,6 +10,7 @@ import { NotionLobbyView } from "@/components/notion/NotionLobbyView";
 import { NotionInteractivePlay } from "@/components/notion/NotionInteractivePlay";
 import { onAuthUserChanged } from "@/lib/firebase";
 import { sounds } from "@/utils/soundEffects";
+import { safeStorage } from "@/utils/safeStorage";
 import {
   createRoom,
   joinRoom,
@@ -45,31 +46,29 @@ export default function Home() {
 
   // 1. Phục hồi Session đăng nhập tự động khi F5 / mở lại trang (Không cần đăng nhập lại)
   useEffect(() => {
-    // Đọc session lưu trữ từ localStorage để render ngay lập tức 0ms
-    if (typeof window !== "undefined") {
+    // Đọc session lưu trữ từ safeStorage để render ngay lập tức 0ms
+    const savedUser = safeStorage.getItem("drinklab_user_session");
+    if (savedUser) {
       try {
-        const savedUser = localStorage.getItem("drinklab_user_session");
-        if (savedUser) {
-          const parsed = JSON.parse(savedUser);
-          setCurrentUser(parsed);
-        }
-
-        const savedRoom = localStorage.getItem("drinklab_last_room");
-        if (savedRoom) {
-          const cleanCode = savedRoom.toUpperCase().trim();
-          setRoomCode(cleanCode);
-        }
+        const parsed = JSON.parse(savedUser);
+        setCurrentUser(parsed);
       } catch (e) {
         console.warn("Lỗi đọc local session:", e);
       }
     }
 
-    // Lắng nghe trạng thái Firebase Auth
+    const savedRoom = safeStorage.getItem("drinklab_last_room");
+    if (savedRoom) {
+      const cleanCode = savedRoom.toUpperCase().trim();
+      setRoomCode(cleanCode);
+    }
+
+    // Lắng nghe trạng thái Firebase Auth (nếu có đăng nhập Google/Email)
     const unsubscribeAuth = onAuthUserChanged((user) => {
       if (user) {
         setCurrentUser(user);
       } else {
-        if (typeof window !== "undefined" && !localStorage.getItem("drinklab_user_session")) {
+        if (!safeStorage.getItem("drinklab_user_session")) {
           setCurrentUser(null);
         }
       }
@@ -159,16 +158,17 @@ export default function Home() {
       setRoomData(updatedRoom);
       setTotalCards(updatedRoom.totalCards || 100);
 
-      // Lưu mã phòng đang chơi vào localStorage
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem("drinklab_last_room", roomCode);
-        } catch {}
-      }
+      // Lưu mã phòng đang chơi vào safeStorage
+      safeStorage.setItem("drinklab_last_room", roomCode);
 
-      // Xác định host
-      if (currentUser?.email) {
-        setIsHost(updatedRoom.hostEmail === currentUser.email || updatedRoom.players?.[0]?.email === currentUser.email);
+      // Xác định host linh hoạt (UID, Name, hoặc Email) cho cả người chơi Khách và Google
+      if (currentUser) {
+        const isCurrentHost = Boolean(
+          (currentUser.uid && updatedRoom.players?.[0]?.uid === currentUser.uid) ||
+          (currentUser.name && updatedRoom.hostName && updatedRoom.hostName.toLowerCase() === currentUser.name.toLowerCase()) ||
+          (currentUser.email && (updatedRoom.hostEmail === currentUser.email || updatedRoom.players?.[0]?.email === currentUser.email))
+        );
+        setIsHost(isCurrentHost);
       }
 
       // Tự động chuyển màn hình theo trạng thái phòng
@@ -218,9 +218,7 @@ export default function Home() {
       setRoomData(room);
       setCurrentUser(user);
       setIsHost(true);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("drinklab_last_room", newCode);
-      }
+      safeStorage.setItem("drinklab_last_room", newCode);
       updatePresence(user, newCode);
       setCurrentScreen("lobby");
     } catch (e) {
@@ -245,9 +243,7 @@ export default function Home() {
         setCurrentUser(user);
         const host = result.room.players?.[0]?.email === user.email;
         setIsHost(host);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("drinklab_last_room", result.room.code);
-        }
+        safeStorage.setItem("drinklab_last_room", result.room.code);
         updatePresence(user, result.room.code);
         setCurrentScreen(result.room.status === "playing" ? "spectator" : "lobby");
         return;
@@ -259,9 +255,7 @@ export default function Home() {
     setRoomCode(cleanCode);
     setCurrentUser(user);
     setIsHost(false);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("drinklab_last_room", cleanCode);
-    }
+    safeStorage.setItem("drinklab_last_room", cleanCode);
     updatePresence(user, cleanCode);
     setCurrentScreen("lobby");
   };
@@ -298,11 +292,7 @@ export default function Home() {
 
   // 12. Rời phòng
   const handleLeaveRoom = () => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem("drinklab_last_room");
-      } catch {}
-    }
+    safeStorage.removeItem("drinklab_last_room");
     if (currentUser) {
       updatePresence(currentUser, null);
     }

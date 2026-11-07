@@ -71,7 +71,14 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
 
   const deck: DrinkingCard[] = roomData?.deck || [];
   const cardIndex = roomData?.currentCardIndex ?? 0;
-  const isFlipped = Boolean(roomData?.isFlipped);
+  // Optimistic UI state cho việc lật thẻ lập tức 0ms
+  const [localFlipped, setLocalFlipped] = useState<boolean>(false);
+
+  useEffect(() => {
+    setLocalFlipped(Boolean(roomData?.isFlipped));
+  }, [roomData?.isFlipped, cardIndex]);
+
+  const isFlipped = localFlipped || Boolean(roomData?.isFlipped);
   const currentTurnIdx = roomData?.currentTurnIdx ?? 0;
   const beerConsumed = roomData?.beerConsumed ?? 0;
   const historyList: CardHistoryItem[] = roomData?.history ?? [];
@@ -82,21 +89,24 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
   const activePlayer: Player | undefined =
     players.length > 0 ? players[currentTurnIdx % players.length] : undefined;
 
-  // LOGIC PHÂN QUYỀN LƯỢT CHƠI TUYỆT ĐỐI:
-  // Chỉ đúng tài khoản của người đến lượt mới được rút thẻ và bấm nút hoàn thành!
-  const isMyTurn = Boolean(
-    activePlayer &&
-      currentUser &&
-      (
-        (activePlayer.email &&
-          currentUser.email &&
-          activePlayer.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()) ||
-        (activePlayer.uid && currentUser.uid && activePlayer.uid === currentUser.uid) ||
-        (activePlayer.name &&
-          currentUser.name &&
-          activePlayer.name.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
-      )
-  );
+  // LOGIC PHÂN QUYỀN LƯỢT CHƠI:
+  // Nếu chơi thử một mình (solo/demo/players <= 1) -> Luôn luôn cho phép bốc thẻ!
+  const isSoloOrDemo = players.length <= 1;
+  const isMyTurn =
+    isSoloOrDemo ||
+    Boolean(
+      activePlayer &&
+        currentUser &&
+        (
+          (activePlayer.uid && currentUser.uid && activePlayer.uid === currentUser.uid) ||
+          (activePlayer.name &&
+            currentUser.name &&
+            activePlayer.name.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) ||
+          (activePlayer.email &&
+            currentUser.email &&
+            activePlayer.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase())
+        )
+    );
 
   // Kiểm tra xem thẻ hiện tại có phải câu hỏi vote / bình chọn cả bàn không
   const isVoteCard = Boolean(
@@ -296,10 +306,12 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
     }
     if (isFlipped) return;
 
+    // Kích hoạt ngay lập tức 0ms Optimistic UI
+    setLocalFlipped(true);
     triggerHaptic("heavy");
     // Âm thanh kèn trống chúc mừng + cụng ly
     sounds.playFanfareCelebration();
-    triggerToast(`🎺🎉 ${activePlayer?.name} vừa bốc mở thẻ bài mới!`);
+    triggerToast(`🎺🎉 ${activePlayer?.name || "Bạn"} vừa bốc mở thẻ bài mới!`);
 
     // Cập nhật Firestore -> Tất cả máy khác lập tức nhận snapshot và xoay 3D lật thẻ
     await updateRoom(roomCode, {
@@ -415,6 +427,9 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       if (onFinishGame) onFinishGame();
       return;
     }
+
+    // Reset optimistic state
+    setLocalFlipped(false);
 
     // Đẩy cập nhật đồng bộ lên Cloud Firestore
     await updateRoom(roomCode, {

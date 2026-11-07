@@ -95,14 +95,16 @@ export async function createRoom(
   totalCards: number = 100
 ): Promise<{ roomCode: string; room: RoomState }> {
   const roomCode = generateRoomCode();
-  const deck = getShuffledDeck(totalCards);
+  // Giới hạn an toàn tối đa 150 thẻ bài mỗi ván nhậu (~60KB) để bảo đảm không bao giờ chạm giới hạn 1MB Firestore
+  const safeCount = Math.min(Math.max(totalCards || 100, 20), 150);
+  const deck = getShuffledDeck(safeCount);
 
   const initialRoom: RoomState = {
     code: roomCode,
     hostEmail: user.email || "",
     hostName: user.name || "Chủ Xị",
     status: "lobby",
-    totalCards,
+    totalCards: safeCount,
     deck,
     currentCardIndex: 0,
     isFlipped: false,
