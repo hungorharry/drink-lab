@@ -284,12 +284,12 @@ export const NotionAuthView: React.FC<NotionAuthViewProps> = ({
               ✦ SipCraft Drinking Game Engine
             </span>
             <h1 className="font-headline-lg-mobile text-headline-lg-mobile text-on-surface tracking-tight font-bold">
-              Đăng Nhập Để Vào Chơi
+              Vào Bàn Chơi Ngay
             </h1>
           </div>
         </div>
         <p className="font-body-sm text-body-sm text-secondary pt-0.5">
-          Đồng bộ thời gian thực đa thiết bị • Lưu vết lịch sử từng ngụm bia trong 2-3 tiếng.
+          Tạo phòng hoặc gửi link để bạn bè vào thẳng phòng chờ (lobby) trong 1 giây mà không cần tài khoản.
         </p>
       </div>
 

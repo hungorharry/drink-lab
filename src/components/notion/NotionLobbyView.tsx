@@ -424,7 +424,7 @@ export const NotionLobbyView: React.FC<NotionLobbyViewProps> = ({
               Mời thêm bạn nhậu
             </span>
             <span className="font-label-sm text-label-sm text-on-surface-variant mt-0.5">
-              Copy link hoặc quét QR để bạn bè đăng nhập vào bàn ({activePlayers.length}/8)
+              Copy link hoặc quét QR để bạn bè vào thẳng bàn ({activePlayers.length}/8)
             </span>
           </button>
         </div>

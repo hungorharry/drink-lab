@@ -27,6 +27,35 @@ import {
   getCanonicalUid,
 } from "@/lib/roomService";
 
+// Helper cấp tài khoản tạm thời cho người chơi không cần đăng nhập
+function getOrCreateGuestUser(): GoogleUser {
+  const saved = safeStorage.getItem("drinklab_user_session");
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch {}
+  }
+  const funnyNames = [
+    "Chiến Hữu",
+    "Bợm Nhậu",
+    "Thần Cồn",
+    "Vua Rót Bia",
+    "Cao Thủ Zô",
+    "Tiên Tửu",
+    "Hải Đếm Ngụm",
+    "Nam Lắc Lư",
+  ];
+  const randomName = `${funnyNames[Math.floor(Math.random() * funnyNames.length)]} #${Math.floor(100 + Math.random() * 900)}`;
+  const guest: GoogleUser = {
+    name: randomName,
+    email: "",
+    avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(randomName)}`,
+    uid: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+  };
+  safeStorage.setItem("drinklab_user_session", JSON.stringify(guest));
+  return guest;
+}
+
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<NotionScreen>("auth");
   const [roomCode, setRoomCode] = useState<string>("");
@@ -44,18 +73,11 @@ export default function Home() {
     timestamp: number;
   } | null>(null);
 
-  // 1. Phục hồi Session đăng nhập tự động khi F5 / mở lại trang (Không cần đăng nhập lại)
+  // 1. Phục hồi Session hoặc tự cấp acc tạm thời để vào chơi 0ms không cần đăng nhập
   useEffect(() => {
-    // Đọc session lưu trữ từ safeStorage để render ngay lập tức 0ms
-    const savedUser = safeStorage.getItem("drinklab_user_session");
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser);
-        setCurrentUser(parsed);
-      } catch (e) {
-        console.warn("Lỗi đọc local session:", e);
-      }
-    }
+    // Đọc session lưu trữ từ safeStorage hoặc tự cấp acc tạm thời
+    const activeUser = getOrCreateGuestUser();
+    setCurrentUser(activeUser);
 
     const savedRoom = safeStorage.getItem("drinklab_last_room");
     if (savedRoom) {
@@ -63,14 +85,10 @@ export default function Home() {
       setRoomCode(cleanCode);
     }
 
-    // Lắng nghe trạng thái Firebase Auth (nếu có đăng nhập Google/Email)
+    // Lắng nghe trạng thái Firebase Auth (nếu người dùng có liên kết Google/Email)
     const unsubscribeAuth = onAuthUserChanged((user) => {
       if (user) {
         setCurrentUser(user);
-      } else {
-        if (!safeStorage.getItem("drinklab_user_session")) {
-          setCurrentUser(null);
-        }
       }
     });
 
@@ -137,15 +155,32 @@ export default function Home() {
     };
   }, [currentUser, roomCode, currentScreen, roomData?.code]);
 
-  // 5. Kiểm tra URL query param khi người khác bấm vào link mời (?room=XYZ hoặc ?join=XYZ)
+  // 5. TỰ ĐỘNG VÀO THẲNG PHÒNG LOBBY KHI BẤM LINK MỜI (?room=XYZ hoặc ?join=XYZ)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const invitedCode = params.get("room") || params.get("join");
       if (invitedCode) {
         const cleanCode = invitedCode.toUpperCase().trim();
+        const activeUser = getOrCreateGuestUser();
+        setCurrentUser(activeUser);
         setRoomCode(cleanCode);
-        setIsInvited(true);
+        setIsInvited(false);
+        setIsHost(false);
+        // Tự động gia nhập phòng và chuyển thẳng vào phòng chờ (Lobby) trong 0ms!
+        joinRoom(cleanCode, activeUser.name, "toi-ben", activeUser).then((result) => {
+          if (result.success && result.room) {
+            setRoomData(result.room);
+            safeStorage.setItem("drinklab_last_room", result.room.code);
+            updatePresence(activeUser, result.room.code);
+            setCurrentScreen(result.room.status === "playing" ? "spectator" : "lobby");
+          } else {
+            setCurrentScreen("lobby");
+          }
+        }).catch((err) => {
+          console.error("Lỗi tự động vào phòng từ link mời:", err);
+          setCurrentScreen("lobby");
+        });
       }
     }
   }, []);
@@ -241,7 +276,10 @@ export default function Home() {
         setRoomCode(result.room.code);
         setRoomData(result.room);
         setCurrentUser(user);
-        const host = result.room.players?.[0]?.email === user.email;
+        const host = Boolean(
+          (result.room.players?.[0]?.uid && user.uid && result.room.players[0].uid === user.uid) ||
+          (user.email && result.room.players?.[0]?.email === user.email)
+        );
         setIsHost(host);
         safeStorage.setItem("drinklab_last_room", result.room.code);
         updatePresence(user, result.room.code);

@@ -32,7 +32,7 @@ export const NotionShareView: React.FC<NotionShareViewProps> = ({
     }
   }, [roomCode]);
 
-  const inviteQuote = `🍻 Kèo nhậu #${roomCode} đang thiếu tay! Bấm link đăng nhập Google vào bàn uống cùng tụi tui ngay: ${inviteLink}`;
+  const inviteQuote = `🍻 Kèo nhậu #${roomCode} đang mở! Bấm link vào thẳng bàn uống cùng tụi tui ngay (không cần tạo tài khoản): ${inviteLink}`;
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
