@@ -343,7 +343,7 @@ class SoundManager {
     } catch (e) {}
   }
 
-  // 8. Âm thanh Cười Haha (Laugh "Ha Ha Ha Ha! 😂")
+  // 8. Âm thanh Cười Haha (Unity Cartoon Comedy Laugh & Wobble 😂)
   public playHahaLaugh() {
     if (this.isMuted) return;
     const ctx = this.initCtx();
@@ -351,36 +351,52 @@ class SoundManager {
 
     try {
       const now = ctx.currentTime;
-      // 5 chuỗi tiếng cười "Hắc hắc hắc ha ha"
-      const laughPitches = [420, 500, 460, 520, 410, 360];
+      // 1. Tiếng lò xo hoạt hình nhún nhảy (Cartoon Boing Spring)
+      const springOsc = ctx.createOscillator();
+      const springGain = ctx.createGain();
+      springOsc.type = "sine";
+      springOsc.frequency.setValueAtTime(220, now);
+      springOsc.frequency.exponentialRampToValueAtTime(750, now + 0.15);
+      springOsc.frequency.exponentialRampToValueAtTime(320, now + 0.3);
+
+      springGain.gain.setValueAtTime(0.2, now);
+      springGain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+      springOsc.connect(springGain);
+      springGain.connect(ctx.destination);
+      springOsc.start(now);
+      springOsc.stop(now + 0.32);
+
+      // 2. Chuỗi tràng cười ngộ nghĩnh (Cartoon Chuckle Formants)
+      const laughPitches = [480, 560, 520, 600, 440, 380];
       laughPitches.forEach((pitch, i) => {
-        const t = now + i * 0.11;
+        const t = now + 0.12 + i * 0.09;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
 
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(pitch, t);
-        osc.frequency.exponentialRampToValueAtTime(pitch * 0.65, t + 0.09);
+        osc.frequency.exponentialRampToValueAtTime(pitch * 0.7, t + 0.08);
 
-        gain.gain.setValueAtTime(0.18, t);
-        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.09);
-
-        const filter = ctx.createBiquadFilter();
         filter.type = "bandpass";
-        filter.frequency.setValueAtTime(900, t);
-        filter.Q.setValueAtTime(2.5, t);
+        filter.frequency.setValueAtTime(1100, t);
+        filter.Q.setValueAtTime(3.0, t);
+
+        gain.gain.setValueAtTime(0.16, t);
+        gain.gain.exponentialRampToValueAtTime(0.005, t + 0.08);
 
         osc.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
 
         osc.start(t);
-        osc.stop(t + 0.1);
+        osc.stop(t + 0.09);
       });
     } catch (e) {}
   }
 
-  // 9. Âm thanh Vỗ Tay Đám Đông (Crowd Applause / Clapping 👏)
+  // 9. Âm thanh Vỗ Tay & Tiếng Hò Reo Khán Giả (Unity Crowd Cheers & Applause 👏)
   public playApplause() {
     if (this.isMuted) return;
     const ctx = this.initCtx();
@@ -388,14 +404,31 @@ class SoundManager {
 
     try {
       const now = ctx.currentTime;
-      const totalClaps = 16;
+      // 1. Tiếng còi huýt reo hò phấn khích (Whistle cheer)
+      const whistleOsc = ctx.createOscillator();
+      const whistleGain = ctx.createGain();
+      whistleOsc.type = "sine";
+      whistleOsc.frequency.setValueAtTime(1600, now);
+      whistleOsc.frequency.exponentialRampToValueAtTime(2400, now + 0.15);
+      whistleOsc.frequency.exponentialRampToValueAtTime(1900, now + 0.35);
+
+      whistleGain.gain.setValueAtTime(0.08, now);
+      whistleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      whistleOsc.connect(whistleGain);
+      whistleGain.connect(ctx.destination);
+      whistleOsc.start(now);
+      whistleOsc.stop(now + 0.36);
+
+      // 2. Đám đông vỗ tay rộn rã đa lớp (Multi-layered crowd clapping)
+      const totalClaps = 22;
       for (let i = 0; i < totalClaps; i++) {
-        const t = now + i * 0.06 + Math.random() * 0.03;
-        const bufferSize = Math.floor(ctx.sampleRate * 0.04);
+        const t = now + i * 0.045 + Math.random() * 0.025;
+        const bufferSize = Math.floor(ctx.sampleRate * 0.045);
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let j = 0; j < bufferSize; j++) {
-          data[j] = Math.random() * 2 - 1;
+          data[j] = (Math.random() * 2 - 1) * (1 - j / bufferSize);
         }
 
         const noise = ctx.createBufferSource();
@@ -403,12 +436,12 @@ class SoundManager {
 
         const filter = ctx.createBiquadFilter();
         filter.type = "bandpass";
-        filter.frequency.setValueAtTime(1100 + Math.random() * 500, t);
-        filter.Q.setValueAtTime(1.5, t);
+        filter.frequency.setValueAtTime(1200 + Math.random() * 600, t);
+        filter.Q.setValueAtTime(1.8, t);
 
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.15 + Math.random() * 0.08, t);
-        gain.gain.exponentialRampToValueAtTime(0.005, t + 0.04);
+        gain.gain.setValueAtTime(0.18 + Math.random() * 0.08, t);
+        gain.gain.exponentialRampToValueAtTime(0.005, t + 0.045);
 
         noise.connect(filter);
         filter.connect(gain);
@@ -419,16 +452,61 @@ class SoundManager {
     } catch (e) {}
   }
 
-  // 10. Khẩu lệnh AI Giọng Đọc "Uống đi! Uống đi! Uống đi! 🍻" (AI Voice Chant)
+  // 10. Khẩu lệnh Rót Bia & AI Giọng Đọc "Uống đi! Uống đi! Dzô! 🍻" (Beer Pour & Chant)
   public playChantDrink() {
     if (this.isMuted) return;
-    // Cụng ly bia kèm theo
+    const ctx = this.initCtx();
+    if (ctx) {
+      try {
+        const now = ctx.currentTime;
+        // 1. Tiếng bật nắp chai bia "Bốp!" (Bottle Cap Pop)
+        const popOsc = ctx.createOscillator();
+        const popGain = ctx.createGain();
+        popOsc.type = "sine";
+        popOsc.frequency.setValueAtTime(650, now);
+        popOsc.frequency.exponentialRampToValueAtTime(140, now + 0.06);
+
+        popGain.gain.setValueAtTime(0.35, now);
+        popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+        popOsc.connect(popGain);
+        popGain.connect(ctx.destination);
+        popOsc.start(now);
+        popOsc.stop(now + 0.07);
+
+        // 2. Tiếng bọt bia sủi bọt xèo xèo (Carbonated Fizz stream)
+        const fizzSize = Math.floor(ctx.sampleRate * 0.25);
+        const fizzBuffer = ctx.createBuffer(1, fizzSize, ctx.sampleRate);
+        const fizzData = fizzBuffer.getChannelData(0);
+        for (let i = 0; i < fizzSize; i++) {
+          fizzData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.12));
+        }
+        const fizz = ctx.createBufferSource();
+        fizz.buffer = fizzBuffer;
+
+        const fizzFilter = ctx.createBiquadFilter();
+        fizzFilter.type = "highpass";
+        fizzFilter.frequency.setValueAtTime(3500, now + 0.04);
+
+        const fizzGain = ctx.createGain();
+        fizzGain.gain.setValueAtTime(0.18, now + 0.04);
+        fizzGain.gain.exponentialRampToValueAtTime(0.005, now + 0.25);
+
+        fizz.connect(fizzFilter);
+        fizzFilter.connect(fizzGain);
+        fizzGain.connect(ctx.destination);
+        fizz.start(now + 0.04);
+      } catch (e) {}
+    }
+
+    // 3. Tiếng cụng ly keng giòn tan
     this.playBeerClink();
 
+    // 4. Khẩu lệnh hô hào
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try {
         window.speechSynthesis.cancel();
-        const chant = new SpeechSynthesisUtterance("Uống đi! Uống đi! Uống đi!");
+        const chant = new SpeechSynthesisUtterance("Uống đi! Uống đi! 1 2 3 dzô!");
         chant.lang = "vi-VN";
         chant.rate = 1.15;
         chant.pitch = 1.25;
@@ -438,7 +516,7 @@ class SoundManager {
     }
   }
 
-  // 11. Âm thanh Hóng Biến Drama Giật Gân "Dun Dun Dunnn! 👀" (Drama Sting)
+  // 11. Âm thanh Hóng Biến Drama Giật Gân Điện Ảnh (Unity Cinematic Drama Sting 👀)
   public playDramaSting() {
     if (this.isMuted) return;
     const ctx = this.initCtx();
@@ -446,27 +524,42 @@ class SoundManager {
 
     try {
       const now = ctx.currentTime;
-      // 3 nốt kịch tính chấn động: Dun (D3 - 146Hz) - Dun (C#3 - 138Hz) - Dunnn (Bb2 - 116Hz)
+      // 1. Tiếng Sub-bass rền vang điện ảnh (Deep Cinematic Boom)
+      const subOsc = ctx.createOscillator();
+      const subGain = ctx.createGain();
+      subOsc.type = "sine";
+      subOsc.frequency.setValueAtTime(80, now);
+      subOsc.frequency.exponentialRampToValueAtTime(35, now + 0.6);
+
+      subGain.gain.setValueAtTime(0.4, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+      subOsc.connect(subGain);
+      subGain.connect(ctx.destination);
+      subOsc.start(now);
+      subOsc.stop(now + 0.62);
+
+      // 2. Ba cú dập hợp âm kịch tính ghê rợn: "Dun - Dun - Dunnn!"
       const stings = [
-        { freq: 146.8, time: 0, dur: 0.16 },
-        { freq: 138.6, time: 0.22, dur: 0.16 },
-        { freq: 116.5, time: 0.44, dur: 0.75 },
+        { freq: 146.8, time: 0, dur: 0.16 }, // D3
+        { freq: 138.6, time: 0.22, dur: 0.16 }, // C#3
+        { freq: 116.5, time: 0.44, dur: 0.85 }, // Bb2 (Suspense climax)
       ];
 
       stings.forEach(({ freq, time, dur }) => {
         const t = now + time;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
 
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(freq, t);
 
-        const filter = ctx.createBiquadFilter();
         filter.type = "lowpass";
-        filter.frequency.setValueAtTime(800, t);
-        filter.frequency.exponentialRampToValueAtTime(300, t + dur);
+        filter.frequency.setValueAtTime(950, t);
+        filter.frequency.exponentialRampToValueAtTime(250, t + dur);
 
-        gain.gain.setValueAtTime(0.25, t);
+        gain.gain.setValueAtTime(0.3, t);
         gain.gain.exponentialRampToValueAtTime(0.01, t + dur);
 
         osc.connect(filter);

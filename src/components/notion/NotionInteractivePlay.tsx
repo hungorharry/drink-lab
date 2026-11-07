@@ -848,34 +848,34 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
       {/* KHUNG BÀN CHƠI THỰC CHIẾN */}
       <div className="bg-surface-container-lowest rounded-xl p-4 border border-surface-container-high shadow-md space-y-3">
         {/* Turn Status Banner */}
-        <div className="flex items-center justify-between pb-2 border-b border-surface-container-high">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className={`w-8 h-8 rounded-full ${isMyTurn ? "bg-primary text-on-primary" : "bg-secondary-fixed text-on-secondary-fixed"} flex items-center justify-center font-bold text-sm shrink-0`}>
+        <div className="flex items-center justify-between pb-2.5 border-b border-surface-container-high gap-2">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className={`w-8 h-8 rounded-full ${isMyTurn ? "bg-primary text-on-primary shadow-xs" : "bg-secondary-fixed text-on-secondary-fixed"} flex items-center justify-center font-bold text-xs shrink-0`}>
               {activePlayer?.initial || "??"}
             </div>
-            <div className="min-w-0">
-              <span className="font-body-md font-bold text-on-surface truncate block">
+            <div className="min-w-0 flex-1">
+              <span className="font-body-md font-bold text-on-surface truncate block leading-snug">
                 {isMyTurn ? `${activePlayer?.name} (LƯỢT CỦA BẠN!)` : `Lượt của: ${activePlayer?.name}`}
               </span>
-              <span className="text-secondary font-label-sm block truncate">
+              <span className="text-secondary font-label-sm block truncate text-[11px] sm:text-xs">
                 {isMyTurn
                   ? isFlipped
                     ? "Bạn đang đọc thử thách & chịu phạt"
                     : "Chạm vào lá bài để rút lượt này"
                   : isFlipped
                   ? `Đang theo dõi ${activePlayer?.name} thực hiện`
-                  : `Đang đợi ${activePlayer?.name} rút bài trên máy của họ (Bạn không được rút thay)`}
+                  : `Đang đợi ${activePlayer?.name} rút bài trên máy của họ`}
               </span>
             </div>
           </div>
-          <span className="font-code-inline text-code-inline px-2 py-0.5 rounded bg-surface-container-highest text-primary font-bold shrink-0">
+          <span className="font-code-inline text-code-inline px-2 py-0.5 rounded bg-surface-container-highest text-primary font-bold shrink-0 text-xs">
             #{cardIndex + 1} / {totalCards}
           </span>
         </div>
 
         {/* CARD CANVAS 3D: KHÔNG GIAN 3D VẬT LÝ VỚI GÓC XOAY THỰC VÀ ĐỘ NẢY SỐNG ĐỘNG */}
         <div
-          className="my-3 select-none"
+          className="my-2.5 select-none"
           style={{ perspective: "1200px" }}
           onMouseMove={handleCardMouseMove}
           onMouseLeave={handleCardMouseLeave}
@@ -892,7 +892,7 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
                 ? "transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)"
                 : "transform 0.15s ease-out",
             }}
-            className={`relative w-full min-h-[300px] sm:min-h-[320px] rounded-3xl transition-shadow duration-300 ${
+            className={`relative w-full min-h-[310px] sm:min-h-[330px] rounded-3xl transition-shadow duration-300 ${
               isFlipped
                 ? "shadow-2xl"
                 : isMyTurn
@@ -908,7 +908,7 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
                 backfaceVisibility: "hidden",
                 WebkitBackfaceVisibility: "hidden",
               }}
-              className={`absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-amber-950 p-6 flex flex-col items-center justify-between text-center border-2 ${
+              className={`absolute inset-0 w-full h-full rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-800 to-amber-950 p-4 sm:p-5 flex flex-col justify-between text-center border-2 ${
                 isMyTurn
                   ? "border-amber-400/80 shadow-[0_0_30px_rgba(245,158,11,0.25)]"
                   : "border-neutral-700/60"
@@ -918,8 +918,8 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
               <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
 
               {/* Header của lá bài úp */}
-              <div className="w-full flex items-center justify-between z-10">
-                <span className="font-code-inline text-xs font-bold px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">
+              <div className="w-full flex items-center justify-between z-10 shrink-0">
+                <span className="font-code-inline text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 tracking-wider">
                   ✦ SIPCRAFT 3D
                 </span>
                 <span className="text-amber-400/80 font-bold text-xs tracking-wider">
@@ -928,23 +928,23 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
               </div>
 
               {/* Trung tâm lá bài với hiệu ứng nổi khối 3D */}
-              <div className="flex flex-col items-center justify-center my-auto z-10 py-3">
+              <div className="flex flex-col items-center justify-center my-auto z-10 py-1 flex-1 min-h-0">
                 <div
-                  className={`w-20 h-20 rounded-2xl ${
+                  className={`w-16 h-16 sm:w-18 sm:h-18 rounded-2xl ${
                     isMyTurn
                       ? "bg-gradient-to-tr from-amber-500 to-yellow-300 text-neutral-950 shadow-[0_10px_25px_rgba(245,158,11,0.5)] animate-bounce"
                       : "bg-neutral-800 text-neutral-400 border border-neutral-700"
-                  } flex items-center justify-center text-4xl mb-3 transition-transform`}
+                  } flex items-center justify-center text-3xl sm:text-4xl mb-2 transition-transform shrink-0`}
                 >
                   🎲
                 </div>
 
-                <h3 className="font-headline-sm text-base sm:text-lg font-bold text-white tracking-tight drop-shadow-sm">
+                <h3 className="font-headline-sm text-sm sm:text-base font-bold text-white tracking-tight drop-shadow-sm px-2">
                   {isMyTurn
                     ? "LƯỢT CỦA BẠN - CHẠM ĐỂ BỐC THẺ"
                     : `LƯỢT CỦA ${activePlayer?.name?.toUpperCase() || "BẠN NHẬU"}`}
                 </h3>
-                <p className="text-xs text-neutral-300 mt-1 max-w-[260px] leading-relaxed">
+                <p className="text-[11px] sm:text-xs text-neutral-300 mt-1 max-w-[260px] leading-snug px-2 line-clamp-2">
                   {isMyTurn
                     ? `Lá bài #${cardIndex + 1} • Luật phạt tính theo từng ngụm bia`
                     : `Chỉ riêng ${activePlayer?.name} mới có quyền rút thẻ trên máy của họ.`}
@@ -952,15 +952,15 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
               </div>
 
               {/* Nút chỉ dẫn dưới cùng */}
-              <div className="z-10 w-full flex justify-center">
+              <div className="z-10 w-full flex justify-center shrink-0 pt-1">
                 {isMyTurn ? (
-                  <span className="px-5 py-2 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 font-bold text-xs shadow-lg uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition-transform">
+                  <span className="px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400 text-neutral-950 font-bold text-[11px] sm:text-xs shadow-lg uppercase tracking-wider flex items-center gap-1.5 active:scale-95 transition-transform">
                     <span>Lật Thẻ 3D Ngay</span>
-                    <span className="material-symbols-outlined text-[15px]">rotate_right</span>
+                    <span className="material-symbols-outlined text-[14px]">rotate_right</span>
                   </span>
                 ) : (
-                  <span className="px-4 py-1.5 rounded-full bg-neutral-800/90 text-neutral-400 text-xs flex items-center gap-2 border border-neutral-700/60">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  <span className="px-3 py-1 rounded-full bg-neutral-800/90 text-neutral-400 text-[11px] flex items-center gap-1.5 border border-neutral-700/60">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
                     <span>Đang đợi {activePlayer?.name} bốc bài...</span>
                   </span>
                 )}
@@ -976,36 +976,36 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
                 WebkitBackfaceVisibility: "hidden",
                 transform: "rotateY(180deg)",
               }}
-              className="absolute inset-0 w-full h-full rounded-3xl bg-white border-2 border-amber-500/30 p-5 sm:p-6 flex flex-col justify-between shadow-2xl overflow-hidden select-none"
+              className="absolute inset-0 w-full h-full rounded-3xl bg-white border-2 border-amber-500/30 p-4 sm:p-5 flex flex-col justify-between shadow-2xl overflow-hidden select-none"
             >
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-code-inline text-xs font-bold uppercase px-3 py-1 rounded-lg bg-neutral-950 text-white shadow-xs tracking-wider">
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between gap-2 shrink-0">
+                  <span className="font-code-inline text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-lg bg-neutral-950 text-white shadow-xs tracking-wider shrink-0">
                     {currentCard?.typeLabel || "THỬ THÁCH"}
                   </span>
-                  <span className="font-label-sm text-neutral-600 font-bold text-xs bg-neutral-100 px-2.5 py-1 rounded-full border border-neutral-200">
+                  <span className="font-label-sm text-neutral-600 font-bold text-xs bg-neutral-100 px-2 py-0.5 rounded-full border border-neutral-200 shrink-0">
                     {currentCard?.difficulty || "Độ khó: 3/5"}
                   </span>
                 </div>
 
-                <h3 className="font-headline-sm text-lg sm:text-xl font-black text-neutral-950 mt-2 tracking-tight">
+                <h3 className="font-headline-sm text-base sm:text-lg font-black text-neutral-950 mt-2 leading-snug line-clamp-2 break-words shrink-0">
                   {currentCard?.title || "Thử Thách Nhậu"}
                 </h3>
 
-                <div className="mt-3 p-4 rounded-2xl bg-gradient-to-br from-amber-50/90 to-yellow-50/70 border border-amber-200/90 shadow-xs">
-                  <p className="font-body-md text-neutral-950 font-semibold text-[15px] sm:text-[16px] leading-relaxed">
+                <div className="mt-2 flex-1 min-h-0 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/90 to-yellow-50/70 border border-amber-200/90 shadow-xs overflow-y-auto scrollbar-none">
+                  <p className="font-body-md text-neutral-950 font-semibold text-[13px] sm:text-[14px] leading-relaxed break-words">
                     {currentCard?.description || "Đang tải nội dung lá bài..."}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-neutral-200 flex items-center justify-between text-label-md">
-                <span className="text-red-700 font-bold flex items-center gap-1.5 truncate max-w-[220px]">
-                  <span className="material-symbols-outlined text-[20px]">gavel</span>
-                  <span>{currentCard?.penalty || "Phạt 1 ngụm"}</span>
+              <div className="mt-2.5 pt-2 border-t border-neutral-200 flex items-center justify-between gap-2 text-label-md shrink-0">
+                <span className="text-red-700 font-bold text-xs sm:text-sm flex items-center gap-1 min-w-0 flex-1 truncate">
+                  <span className="material-symbols-outlined text-[18px] shrink-0">gavel</span>
+                  <span className="truncate">{currentCard?.penalty || "Phạt 1 ngụm"}</span>
                 </span>
-                <span className="font-bold text-neutral-800 font-code-inline text-xs bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-200">
-                  🍺 {beerConsumed} ngụm cả bàn
+                <span className="font-bold text-neutral-800 font-code-inline text-[11px] sm:text-xs bg-amber-100/90 px-2.5 py-1 rounded-lg border border-amber-200 shrink-0 whitespace-nowrap">
+                  🍺 {beerConsumed} ngụm
                 </span>
               </div>
             </div>
@@ -1299,39 +1299,47 @@ export const NotionInteractivePlay: React.FC<NotionInteractivePlayProps> = ({
             )
           )}
 
-          {/* Tương tác cảm xúc khán giả */}
-          <div className="pt-2 border-t border-surface-container-high">
-            <span className="font-label-sm text-secondary font-medium mb-1.5 block">
+          {/* Tương tác cảm xúc cả bàn */}
+          <div className="pt-2.5 border-t border-surface-container-high space-y-1.5">
+            <span className="font-label-sm text-secondary font-semibold text-xs block">
               Tương tác thả cảm xúc cả bàn:
             </span>
             <div className="grid grid-cols-4 gap-1.5">
               <button
                 onClick={() => handleSpectatorReaction("🍺", "Ép 1 ngụm")}
-                className="py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                className="py-2 px-1 rounded-xl bg-surface-container hover:bg-surface-container-high text-[11px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 active:scale-95 transition-all text-on-surface shadow-xs border border-surface-container-high cursor-pointer"
                 type="button"
+                title="Ép uống bia"
               >
-                <span>🍺 Ép uống</span>
+                <span className="text-base sm:text-sm shrink-0">🍺</span>
+                <span className="truncate">Ép uống</span>
               </button>
               <button
                 onClick={() => handleSpectatorReaction("👏", "Cổ vũ")}
-                className="py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                className="py-2 px-1 rounded-xl bg-surface-container hover:bg-surface-container-high text-[11px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 active:scale-95 transition-all text-on-surface shadow-xs border border-surface-container-high cursor-pointer"
                 type="button"
+                title="Cổ vũ nhiệt tình"
               >
-                <span>👏 Cổ vũ</span>
+                <span className="text-base sm:text-sm shrink-0">👏</span>
+                <span className="truncate">Cổ vũ</span>
               </button>
               <button
                 onClick={() => handleSpectatorReaction("😂", "Cười xỉu")}
-                className="py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                className="py-2 px-1 rounded-xl bg-surface-container hover:bg-surface-container-high text-[11px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 active:scale-95 transition-all text-on-surface shadow-xs border border-surface-container-high cursor-pointer"
                 type="button"
+                title="Cười xỉu"
               >
-                <span>😂 Cười xỉu</span>
+                <span className="text-base sm:text-sm shrink-0">😂</span>
+                <span className="truncate">Cười xỉu</span>
               </button>
               <button
                 onClick={() => handleSpectatorReaction("👀", "Hóng biến")}
-                className="py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                className="py-2 px-1 rounded-xl bg-surface-container hover:bg-surface-container-high text-[11px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 active:scale-95 transition-all text-on-surface shadow-xs border border-surface-container-high cursor-pointer"
                 type="button"
+                title="Hóng biến kịch tính"
               >
-                <span>👀 Hóng biến</span>
+                <span className="text-base sm:text-sm shrink-0">👀</span>
+                <span className="truncate">Hóng biến</span>
               </button>
             </div>
           </div>
